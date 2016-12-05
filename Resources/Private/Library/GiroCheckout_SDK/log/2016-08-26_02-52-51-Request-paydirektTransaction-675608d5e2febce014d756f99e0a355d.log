@@ -1,0 +1,115 @@
+[start @2016-08-26 02:52:51]
+
+[PHP ini]
+
+PHP version: 7.0.8
+cURL: 7.43.0
+ssl: OpenSSL/0.9.8zd
+
+
+[transaction @2016-08-26 02:52:51]
+Zahlart: paydirektTransaction
+
+
+[params set @2016-08-26 02:52:51]
+merchantId=350000
+projectId=7375
+merchantTxId=123456
+amount=4452
+currency=EUR
+purpose=Zweck
+shippingAmount=2821
+shippingAddresseFirstName=Heiko
+shippingAddresseLastName=Maßmann
+shippingZipCode=88699
+shippingCity=Frickingen
+shippingCountry=DE
+orderAmount=123
+orderId=9837-898
+cart=[{"name":"Bobbycar","quantity":3,"grossAmount":2599,"ean":"800001303"},{"name":"Helm","quantity":1,"grossAmount":1853}]
+urlRedirect=https://www.my-domain.de/girocheckout/redirect.php
+urlNotify=https://www.my-domain.de/girocheckout/redirect.php
+
+
+[cURL request @2016-08-26 02:52:52]
+params:
+merchantId=350000
+projectId=7375
+merchantTxId=123456
+amount=4452
+currency=EUR
+purpose=Zweck
+shippingAmount=2821
+shippingAddresseFirstName=Heiko
+shippingAddresseLastName=Maßmann
+shippingZipCode=88699
+shippingCity=Frickingen
+shippingCountry=DE
+orderAmount=123
+orderId=9837-898
+cart=[{"name":"Bobbycar","quantity":3,"grossAmount":2599,"ean":"800001303"},{"name":"Helm","quantity":1,"grossAmount":1853}]
+urlRedirect=https://www.my-domain.de/girocheckout/redirect.php
+urlNotify=https://www.my-domain.de/girocheckout/redirect.php
+hash=2b1f3a5578ea69afca37bda165febd52
+sourceId=localhost;2.0.4;;
+userAgent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36
+
+CurlInfo:
+url=https://dev.girosolution.de/girocheckout/api/v2/transaction/start
+content_type=application/json
+http_code=200
+header_size=344
+request_size=204
+filetime=-1
+ssl_verify_result=0
+redirect_count=0
+total_time=1.590806
+namelookup_time=0.000866
+connect_time=0.301725
+pretransfer_time=0.979867
+size_upload=2508
+size_download=107
+speed_download=67
+speed_upload=1576
+download_content_length=107
+upload_content_length=2508
+starttransfer_time=0.979876
+redirect_time=0
+redirect_url=
+primary_ip=46.252.21.136
+certinfo {
+}
+primary_port=443
+local_ip=10.0.1.10
+local_port=56433
+request_header=POST /girocheckout/api/v2/transaction/start HTTP/1.1
+Host: dev.girosolution.de
+Accept: */*
+Content-Length: 2508
+Content-Type: multipart/form-data; boundary=------------------------bf1900a22ab49072
+
+
+
+
+[cURL reply @2016-08-26 02:52:52]
+result:HTTP/1.1 200 OK
+Date: Fri, 26 Aug 2016 17:52:12 GMT
+Server: Apache/2.4.7 (Ubuntu)
+X-Drupal-Cache: MISS
+Expires: Sun, 19 Nov 1978 05:00:00 GMT
+Cache-Control: no-cache, must-revalidate, post-check=0, pre-check=0
+X-Content-Type-Options: nosniff
+hash: 526207323608567be0b2e0d88369c712
+Content-Length: 107
+Content-Type: application/json
+
+{"reference":"5303b754-2e3f-447e-b78c-8f6d182979f8","redirect":"","rc":"5004","msg":"Aufruf ung\u00fcltig"}
+curl_error log:
+
+[reply params @2016-08-26 02:52:52]
+rc=5004
+msg=Aufruf ungültig
+reference=5303b754-2e3f-447e-b78c-8f6d182979f8
+redirect=
+
+

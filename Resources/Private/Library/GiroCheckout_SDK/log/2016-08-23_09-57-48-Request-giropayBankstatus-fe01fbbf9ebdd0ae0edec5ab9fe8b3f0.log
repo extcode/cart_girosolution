@@ -1,0 +1,85 @@
+[start @2016-08-23 09:57:48]
+
+[PHP ini]
+
+PHP version: 7.0.8
+cURL: 7.43.0
+ssl: OpenSSL/0.9.8zd
+
+
+[transaction @2016-08-23 09:57:48]
+Zahlart: giropayBankstatus
+
+
+[params set @2016-08-23 09:57:48]
+merchantId=350000
+projectId=7264
+bic=TEßTDETT421
+
+
+[cURL request @2016-08-23 09:57:50]
+params:
+merchantId=350000
+projectId=7264
+bic=TEßTDETT421
+hash=8c020a10f002f4bcdd610df9334d8e98
+sourceId=localhost;2.0.4;;
+userAgent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36
+
+CurlInfo:
+url=https://dev.girosolution.de/girocheckout/api/v2/giropay/bankstatus
+content_type=application/json
+http_code=200
+header_size=344
+request_size=204
+filetime=-1
+ssl_verify_result=0
+redirect_count=0
+total_time=2.007713
+namelookup_time=0.399348
+connect_time=0.683578
+pretransfer_time=1.341158
+size_upload=815
+size_download=112
+speed_download=55
+speed_upload=405
+download_content_length=112
+upload_content_length=815
+starttransfer_time=1.341166
+redirect_time=0
+redirect_url=
+primary_ip=46.252.21.136
+certinfo {
+}
+primary_port=443
+local_ip=10.0.1.10
+local_port=49768
+request_header=POST /girocheckout/api/v2/giropay/bankstatus HTTP/1.1
+Host: dev.girosolution.de
+Accept: */*
+Content-Length: 815
+Content-Type: multipart/form-data; boundary=------------------------4e871b1308c406d3
+
+
+
+
+[cURL reply @2016-08-23 09:57:50]
+result:HTTP/1.1 200 OK
+Date: Tue, 23 Aug 2016 12:57:15 GMT
+Server: Apache/2.4.7 (Ubuntu)
+X-Drupal-Cache: MISS
+Expires: Sun, 19 Nov 1978 05:00:00 GMT
+Cache-Control: no-cache, must-revalidate, post-check=0, pre-check=0
+X-Content-Type-Options: nosniff
+hash: 5d2de1090efa9f9aa9f0331048eca73b
+Content-Length: 112
+Content-Type: application/json
+
+{"bankcode":null,"bic":null,"bankname":null,"giropay":null,"giropayid":null,"rc":5026,"msg":"bic ung\u00fcltig"}
+curl_error log:
+
+[reply params @2016-08-23 09:57:50]
+rc=5026
+msg=bic ungültig
+
+

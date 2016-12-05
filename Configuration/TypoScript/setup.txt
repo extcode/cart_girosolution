@@ -1,0 +1,10 @@
+plugin.tx_girosolution {
+    api {
+        password =
+        merchantId =
+        projectId =
+        merchantTxId =
+        purpose =
+        apiUrl =
+    }
+}
