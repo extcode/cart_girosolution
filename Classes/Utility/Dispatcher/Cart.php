@@ -293,19 +293,30 @@ class Cart
      */
     protected function processRedirect()
     {
-        $logger = $this->logManager->getLogger(__CLASS__);
-
         try {
             $notify = new \GiroCheckout_SDK_Notify('giropayTransaction');
             $notify->setSecret($this->cartGirosolutionConf['api']['password']);
-
-            //the array containing the parameters
             $notify->parseNotification($_GET);
 
-            //show the result of the transaction to the customer
             if ($notify->paymentSuccessful()) {
+                $reference = $notify->getResponseParam('gcReference');
+
+                $resultPayment = $this->paymentSuccess($notify);
+
+                $this->updatePaymentByOrderTransactionReference($reference, $resultPayment);
+
+                $this->sendMails();
+
                 header('Location: ' . $this->cartGirosolutionConf['api']['successUrl']);
             } else {
+                $reference = $notify->getResponseParam('gcReference');
+
+                $resultPayment = $this->paymentFail($notify);
+
+                $this->updatePaymentByOrderTransactionReference($reference, $resultPayment);
+
+                $this->sendMails();
+
                 header('Location: ' . $this->cartGirosolutionConf['api']['failUrl']);
             }
 
@@ -313,7 +324,11 @@ class Cart
                 echo $notify->getResponseParam('gcResultAVS');
             }
         } catch (\Exception $e) {
-            echo $e->getMessage();
+            $notify->sendBadRequestStatus();
+
+            #TODO log the error
+
+            exit;
         }
     }
 
@@ -324,75 +339,79 @@ class Cart
      */
     protected function processNotify()
     {
-        $logger = $this->logManager->getLogger(__CLASS__);
-
-        $logger->debug(
-            'processNotify',
-            [
-                'message' => '',
-            ]
-        );
-
         try {
             $notify = new \GiroCheckout_SDK_Notify('giropayTransaction');
             $notify->setSecret($this->cartGirosolutionConf['api']['password']);
             $notify->parseNotification($_GET);
 
-            //check response and update transaction
             if ($notify->paymentSuccessful()) {
                 $reference = $notify->getResponseParam('gcReference');
-                $notify->getResponseParam('gcMerchantTxId');
-                $notify->getResponseParam('gcBackendTxId');
-                $notify->getResponseParam('gcAmount');
-                $notify->getResponseParam('gcCurrency');
-                $resultPayment = $notify->getResponseParam('gcResultPayment');
 
-                if ($notify->avsSuccessful()) {
-                    $notify->getResponseParam('gcResultAVS');
-                }
-
-                $notify->sendOkStatus();
-                $notify->setNotifyResponseParam('Result', 'OK');
-                $notify->setNotifyResponseParam('ErrorMessage', '');
-                $notify->setNotifyResponseParam('MailSent', '0');
-                $notify->setNotifyResponseParam('OrderId', '1111');
-                $notify->setNotifyResponseParam('CustomerId', '2222');
-                echo $notify->getNotifyResponseStringJson();
+                $resultPayment = $this->paymentSuccess($notify);
 
                 $this->updatePaymentByOrderTransactionReference($reference, $resultPayment);
+
+                $this->sendMails();
 
                 exit;
             } else {
                 $reference = $notify->getResponseParam('gcReference');
-                $notify->getResponseParam('gcMerchantTxId');
-                $notify->getResponseParam('gcBackendTxId');
-                $resultPayment = $notify->getResponseParam('gcResultPayment');
-                $notify->getResponseMessage($notify->getResponseParam('gcResultPayment'), 'DE');
 
-                $notify->sendOkStatus();
-                $notify->setNotifyResponseParam('Result', 'OK');
-                $notify->setNotifyResponseParam('ErrorMessage', '');
-                $notify->setNotifyResponseParam('MailSent', '0');
-                $notify->setNotifyResponseParam('OrderId', '1111');
-                $notify->setNotifyResponseParam('CustomerId', '2222');
-                echo $notify->getNotifyResponseStringJson();
+                $resultPayment = $this->paymentFail($notify);
 
                 $this->updatePaymentByOrderTransactionReference($reference, $resultPayment);
+
+                $this->sendMails();
 
                 exit;
             }
         } catch (\Exception $e) {
             $notify->sendBadRequestStatus();
-            $notify->setNotifyResponseParam('Result', 'ERROR');
-            $notify->setNotifyResponseParam('ErrorMessage', $e->getMessage());
-            $notify->setNotifyResponseParam('MailSent', '0');
-            $notify->setNotifyResponseParam('OrderId', '1111');
-            $notify->setNotifyResponseParam('CustomerId', '2222');
-            echo $notify->getNotifyResponseStringJson();
 
-            var_dump($e->getMessage());
+            #TODO log the error
+
             exit;
         }
+    }
+
+    /**
+     * @param \GiroCheckout_SDK_Notify $notify
+     *
+     * @return string
+     */
+    protected function paymentSuccess(\GiroCheckout_SDK_Notify $notify)
+    {
+        $notify->getResponseParam('gcMerchantTxId');
+        $notify->getResponseParam('gcBackendTxId');
+        $notify->getResponseParam('gcAmount');
+        $notify->getResponseParam('gcCurrency');
+        $resultPayment = $notify->getResponseParam('gcResultPayment');
+
+        if ($notify->avsSuccessful()) {
+            $notify->getResponseParam('gcResultAVS');
+        }
+
+        $notify->sendOkStatus();
+
+        return $resultPayment;
+    }
+
+    /**
+     * @param \GiroCheckout_SDK_Notify $notify
+     *
+     * @return string
+     */
+    protected function paymentFail(\GiroCheckout_SDK_Notify $notify)
+    {
+        $notify->getResponseParam('gcMerchantTxId');
+        $notify->getResponseParam('gcBackendTxId');
+        $resultPayment = $notify->getResponseParam('gcResultPayment');
+
+        $notify->getResponseMessage($resultPayment, 'DE');
+
+        $notify->sendOkStatus();
+
+        return $resultPayment;
     }
 
     /**
@@ -455,26 +474,6 @@ class Cart
         $mailHandler->setCart($this->cart->getCart());
 
         $mailHandler->sendSellerMail($orderItem, $billingAddress, $shippingAddress);
-    }
-
-    /**
-     * Get Order Item
-     */
-    protected function getOrderItem()
-    {
-        if ($this->orderNumber) {
-            $this->orderItem = $this->orderItemRepository->findOneByOrderNumber($this->orderNumber);
-        }
-    }
-
-    /**
-     * Get Payment
-     */
-    protected function getOrderPayment()
-    {
-        if ($this->orderItem) {
-            $this->orderPayment = $this->orderItem->getPayment();
-        }
     }
 
     /**
@@ -575,6 +574,17 @@ class Cart
             $orderTransaction->getPayment()->setStatus($internalStatus);
 
             $this->persistenceManager->persistAll();
+
+            $this->orderItem = $orderTransaction->getPayment()->getItem();
+
+            $this->getCart();
+
+            switch ($externalStatus) {
+                case 4000:
+                    $this->updateCart();
+                    break;
+                default:
+            }
         }
     }
 }

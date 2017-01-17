@@ -230,6 +230,7 @@ class Payment
         $this->orderItem = $params['orderItem'];
 
         $provider = $this->orderItem->getPayment()->getProvider();
+
         if ($provider === 'GIROSOLUTION_CREDITCARD') {
             $params['providerUsed'] = true;
 
@@ -238,8 +239,6 @@ class Payment
             $this->cart = $this->objectManager->get(
                 \Extcode\Cart\Domain\Model\Cart::class
             );
-            $this->cart->setFHash($this->cartFHash);
-            $this->cart->setSHash($this->cartSHash);
             $this->cart->setOrderItem($this->orderItem);
             $this->cart->setCart($cart);
             $this->cart->setPid($this->cartConf['settings']['order']['pid']);
@@ -265,7 +264,7 @@ class Payment
         $merchantId = $this->cartGirosolutionConf['api']['merchantId'];
         $projectId = $this->cartGirosolutionConf['api']['projectId'];
         $merchantTxId = $this->cartGirosolutionConf['api']['merchantTxId'];
-        $purpose = substr($this->cartGirosolutionConf['api']['purpose'], 27); // API String length is 27
+        $purpose = substr($this->cartGirosolutionConf['api']['purpose'], 0, 27); // API String length is 27
 
         $amount = $this->orderItem->getTotalGross() * 100;
 
