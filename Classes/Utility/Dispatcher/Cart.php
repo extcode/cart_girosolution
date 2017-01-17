@@ -262,6 +262,15 @@ class Cart
         $this->request->setControllerVendorName('Extcode');
         $this->request->setControllerExtensionName('CartGirosolution');
         $this->request->setControllerActionName($action);
+
+        $allowedPaymentTypes = ['creditCart', 'giropay'];
+
+        $paymentType = \TYPO3\CMS\Core\Utility\GeneralUtility::_GP('paymentType');
+
+        if (in_array($paymentType, $allowedPaymentTypes)) {
+            $this->request->setArguments(['paymentType' => $paymentType]);
+        }
+
         if (is_array($request['arguments'])) {
             $this->request->setArguments($request['arguments']);
         }
@@ -278,24 +287,28 @@ class Cart
 
         $this->getRequest();
 
-        switch ($this->request->getControllerActionName()) {
-            case 'notifyGiroSolution':
-                $this->processNotify();
-                break;
-            case 'redirectGiroSolution':
-                $this->processRedirect();
-                break;
+        if ($this->request->hasArgument('paymentType')) {
+            $paymentType = $this->request->getArgument('paymentType');
+
+            switch ($this->request->getControllerActionName()) {
+                case 'notifyGiroSolution':
+                    $this->processNotify($paymentType);
+                    break;
+                case 'redirectGiroSolution':
+                    $this->processRedirect($paymentType);
+                    break;
+            }
         }
     }
 
     /**
      * Process Redirect
      */
-    protected function processRedirect()
+    protected function processRedirect($paymentType)
     {
         try {
             $notify = new \GiroCheckout_SDK_Notify('giropayTransaction');
-            $notify->setSecret($this->cartGirosolutionConf['api']['password']);
+            $notify->setSecret($this->cartGirosolutionConf['api'][$paymentType]['password']);
             $notify->parseNotification($_GET);
 
             if ($notify->paymentSuccessful()) {
@@ -307,7 +320,7 @@ class Cart
 
                 $this->sendMails();
 
-                header('Location: ' . $this->cartGirosolutionConf['api']['successUrl']);
+                header('Location: ' . $this->cartGirosolutionConf['api'][$paymentType]['successUrl']);
             } else {
                 $reference = $notify->getResponseParam('gcReference');
 
@@ -317,7 +330,7 @@ class Cart
 
                 $this->sendMails();
 
-                header('Location: ' . $this->cartGirosolutionConf['api']['failUrl']);
+                header('Location: ' . $this->cartGirosolutionConf['api'][$paymentType]['failUrl']);
             }
 
             if ($notify->avsSuccessful()) {
@@ -337,11 +350,11 @@ class Cart
      *
      * @return array
      */
-    protected function processNotify()
+    protected function processNotify($paymentType)
     {
         try {
             $notify = new \GiroCheckout_SDK_Notify('giropayTransaction');
-            $notify->setSecret($this->cartGirosolutionConf['api']['password']);
+            $notify->setSecret($this->cartGirosolutionConf['api'][$paymentType]['password']);
             $notify->parseNotification($_GET);
 
             if ($notify->paymentSuccessful()) {

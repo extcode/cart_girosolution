@@ -97,13 +97,6 @@ class Payment
     protected $cartGirosolutionConf = [];
 
     /**
-     * Payment Query Url
-     *
-     * @var string
-     */
-    protected $paymentQueryUrl = 'https://secure.pay1.de/frontend/';
-
-    /**
      * Payment Query
      *
      * @var array
@@ -231,56 +224,79 @@ class Payment
 
         $provider = $this->orderItem->getPayment()->getProvider();
 
-        if ($provider === 'GIROSOLUTION_CREDITCARD') {
-            $params['providerUsed'] = true;
-
-            $cart = $params['cart'];
-
-            $this->cart = $this->objectManager->get(
-                \Extcode\Cart\Domain\Model\Cart::class
-            );
-            $this->cart->setOrderItem($this->orderItem);
-            $this->cart->setCart($cart);
-            $this->cart->setPid($this->cartConf['settings']['order']['pid']);
-
-            $cartRepository = $this->objectManager->get(
-                \Extcode\Cart\Domain\Repository\CartRepository::class
-            );
-            $cartRepository->add($this->cart);
-            $this->persistenceManager->persistAll();
-
-            $this->handleRequest();
+        if ($provider != 'GIROSOLUTION_CREDITCARD' &&
+            $provider != 'GIROSOLUTION_GIROPAY'
+        ) {
+            return [$params];
         }
+
+        $params['providerUsed'] = true;
+
+        $cart = $params['cart'];
+
+        $this->cart = $this->objectManager->get(
+            \Extcode\Cart\Domain\Model\Cart::class
+        );
+        $this->cart->setOrderItem($this->orderItem);
+        $this->cart->setCart($cart);
+        $this->cart->setPid($this->cartConf['settings']['order']['pid']);
+
+        $cartRepository = $this->objectManager->get(
+            \Extcode\Cart\Domain\Repository\CartRepository::class
+        );
+        $cartRepository->add($this->cart);
+        $this->persistenceManager->persistAll();
+
+        switch ($provider) {
+            case 'GIROSOLUTION_CREDITCARD':
+                $transactionType = 'creditCard';
+                break;
+            case 'GIROSOLUTION_GIROPAY':
+                $transactionType = 'giropay';
+                break;
+            default:
+                $transactionType = '';
+        }
+        $this->handleRequest($transactionType);
 
         return [$params];
     }
 
     /**
+     * Handle GiroCheckout SDK Request
+     *
+     * @param string $transactionType
+     *
      * @return void
      */
-    protected function handleRequest()
+    protected function handleRequest($transactionType)
     {
-        $password = $this->cartGirosolutionConf['api']['password'];
-        $merchantId = $this->cartGirosolutionConf['api']['merchantId'];
-        $projectId = $this->cartGirosolutionConf['api']['projectId'];
-        $merchantTxId = $this->cartGirosolutionConf['api']['merchantTxId'];
-        $purpose = substr($this->cartGirosolutionConf['api']['purpose'], 0, 27); // API String length is 27
+        if (empty($transactionType)) {
+            return;
+        }
+        $password = $this->cartGirosolutionConf['api'][$transactionType]['password'];
+        $merchantId = $this->cartGirosolutionConf['api'][$transactionType]['merchantId'];
+        $projectId = $this->cartGirosolutionConf['api'][$transactionType]['projectId'];
+        $merchantTxId = $this->cartGirosolutionConf['api'][$transactionType]['merchantTxId'];
+        $purpose = substr($this->cartGirosolutionConf['api'][$transactionType]['purpose'], 0, 27); // API String length is 27
 
         $amount = $this->orderItem->getTotalGross() * 100;
 
         /** @var \GiroCheckout_SDK_Request $request */
-        $request = new \GiroCheckout_SDK_Request('creditCardTransaction');
+        $request = new \GiroCheckout_SDK_Request($transactionType . 'Transaction');
         $request->setSecret($password);
-        $request->addParam('merchantId', $merchantId)
-            ->addParam('projectId', $projectId)
-            ->addParam('merchantTxId', $merchantTxId)
-            ->addParam('amount', $amount)
-            ->addParam('currency', 'EUR')
-            ->addParam('type', 'SALE')
-            ->addParam('purpose', $purpose)
-            ->addParam('urlRedirect', $this->getApiUrl('redirect'))
-            ->addParam('urlNotify', $this->getApiUrl('notify'))
-            ->submit();
+        $request->addParam('merchantId', $merchantId);
+        $request->addParam('projectId', $projectId);
+        $request->addParam('merchantTxId', $merchantTxId);
+        $request->addParam('amount', $amount);
+        $request->addParam('currency', 'EUR');
+        if ($transactionType == 'creditCardTransaction') {
+            $request->addParam('type', 'SALE');
+        }
+        $request->addParam('purpose', $purpose);
+        $request->addParam('urlRedirect', $this->getApiUrl($transactionType, 'redirect'));
+        $request->addParam('urlNotify', $this->getApiUrl($transactionType, 'notify'));
+        $request->submit();
 
         if ($request->requestHasSucceeded()) {
             $reference = $request->getResponseParam('reference');
@@ -302,12 +318,15 @@ class Payment
     }
 
     /**
-     * @return string $apiType
+     * @param string $transactionType
+     * @param string $returnUrlType
+     *
+     * @return string
      */
-    protected function getApiUrl($apiType)
+    protected function getApiUrl($transactionType, $returnUrlType)
     {
-        $apiUrl = $this->cartGirosolutionConf['api']['url'];
-        $apiUrl .= '?eID=' . $apiType . 'GiroSolution';
+        $apiUrl = $this->cartGirosolutionConf['api'][$transactionType]['url'];
+        $apiUrl .= '?eID=' . $returnUrlType . 'GiroSolution&paymentType=' . $transactionType;
 
         return $apiUrl;
     }
