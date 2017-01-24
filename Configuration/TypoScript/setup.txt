@@ -1,22 +1,42 @@
 plugin.tx_girosolution {
     api {
+        url =
+
         creditCard {
             password =
             merchantId =
             projectId =
             merchantTxId =
-            url =
-            successUrl =
-            failUrl =
+            purpose =
+
+            redirectUrl {
+                success =
+                fail =
+            }
         }
         giropay {
             password =
             merchantId =
             projectId =
             merchantTxId =
-            url =
-            successUrl =
-            failUrl =
+            purpose =
+
+            redirectUrl {
+                success =
+                fail =
+            }
+        }
+        paypal {
+            password =
+            merchantId =
+            projectId =
+            merchantTxId =
+            purpose =
+
+            redirectUrl {
+                success =
+                fail =
+            }
         }
     }
 }

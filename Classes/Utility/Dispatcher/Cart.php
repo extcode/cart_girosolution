@@ -106,7 +106,7 @@ class Cart
      *
      * @var \Extcode\Cart\Domain\Model\Order\Transaction
      */
-    protected $transaction;
+    protected $orderTransaction;
 
     /**
      * @var \TYPO3\CMS\Extbase\Service\TypoScriptService
@@ -263,12 +263,12 @@ class Cart
         $this->request->setControllerExtensionName('CartGirosolution');
         $this->request->setControllerActionName($action);
 
-        $allowedPaymentTypes = ['creditCart', 'giropay'];
+        $allowedPaymentTypes = ['creditCard', 'giropay', 'paypal'];
 
         $paymentType = \TYPO3\CMS\Core\Utility\GeneralUtility::_GP('paymentType');
 
         if (in_array($paymentType, $allowedPaymentTypes)) {
-            $this->request->setArguments(['paymentType' => $paymentType]);
+            $this->request->setArgument('paymentType', $paymentType);
         }
 
         if (is_array($request['arguments'])) {
@@ -311,26 +311,27 @@ class Cart
             $notify->setSecret($this->cartGirosolutionConf['api'][$paymentType]['password']);
             $notify->parseNotification($_GET);
 
-            if ($notify->paymentSuccessful()) {
-                $reference = $notify->getResponseParam('gcReference');
+            $reference = $notify->getResponseParam('gcReference');
+            $this->getOrderTransactionByReference($reference);
 
+            if ($notify->paymentSuccessful()) {
                 $resultPayment = $this->paymentSuccess($notify);
 
-                $this->updatePaymentByOrderTransactionReference($reference, $resultPayment);
+                if ($this->orderTransaction->getExternalStatusCode() != $resultPayment) {
+                    $this->updatePayment($resultPayment);
+                    $this->sendMails();
+                }
 
-                $this->sendMails();
-
-                header('Location: ' . $this->cartGirosolutionConf['api'][$paymentType]['successUrl']);
+                header('Location: ' . $this->cartGirosolutionConf['api'][$paymentType]['redirectUrl']['success']);
             } else {
-                $reference = $notify->getResponseParam('gcReference');
-
                 $resultPayment = $this->paymentFail($notify);
 
-                $this->updatePaymentByOrderTransactionReference($reference, $resultPayment);
+                if ($this->orderTransaction->getExternalStatusCode() != $resultPayment) {
+                    $this->updatePayment($resultPayment);
+                    $this->sendMails();
+                }
 
-                $this->sendMails();
-
-                header('Location: ' . $this->cartGirosolutionConf['api'][$paymentType]['failUrl']);
+                header('Location: ' . $this->cartGirosolutionConf['api'][$paymentType]['redirectUrl']['fail']);
             }
 
             if ($notify->avsSuccessful()) {
@@ -357,22 +358,21 @@ class Cart
             $notify->setSecret($this->cartGirosolutionConf['api'][$paymentType]['password']);
             $notify->parseNotification($_GET);
 
-            if ($notify->paymentSuccessful()) {
-                $reference = $notify->getResponseParam('gcReference');
+            $reference = $notify->getResponseParam('gcReference');
+            $this->getOrderTransactionByReference($reference);
 
+            if ($notify->paymentSuccessful()) {
                 $resultPayment = $this->paymentSuccess($notify);
 
-                $this->updatePaymentByOrderTransactionReference($reference, $resultPayment);
+                $this->updatePayment($resultPayment);
 
                 $this->sendMails();
 
                 exit;
             } else {
-                $reference = $notify->getResponseParam('gcReference');
-
                 $resultPayment = $this->paymentFail($notify);
 
-                $this->updatePaymentByOrderTransactionReference($reference, $resultPayment);
+                $this->updatePayment($resultPayment);
 
                 $this->sendMails();
 
@@ -519,32 +519,6 @@ class Cart
     }
 
     /**
-     * @param string $txn_id
-     * @param string $txn_txt
-     *
-     * @return void
-     */
-    protected function addOrderTransaction($txn_id, $txn_txt = '')
-    {
-        $this->transaction = $this->objectManager->get(
-            \Extcode\Cart\Domain\Model\Order\Transaction::class
-        );
-        $this->transaction->setPid($this->orderPayment->getPid());
-
-        $this->transaction->setTxnId($txn_id);
-        $this->transaction->setTxnTxt($txn_txt);
-        $this->orderTransactionRepository->add($this->transaction);
-
-        if ($this->orderPayment) {
-            $this->orderPayment->addTransaction($this->transaction);
-        }
-
-        $this->orderPaymentRepository->update($this->orderPayment);
-
-        $this->persistenceManager->persistAll();
-    }
-
-    /**
      * @param int $status
      */
     protected function setOrderPaymentStatus($status)
@@ -556,11 +530,8 @@ class Cart
 
     /**
      * @param string $orderTransactionReference
-     * @param int $externalStatus
-     *
-     * @return void
      */
-    protected function updatePaymentByOrderTransactionReference($orderTransactionReference, $externalStatus)
+    protected function getOrderTransactionByReference($orderTransactionReference)
     {
         /** @var $querySettings \TYPO3\CMS\Extbase\Persistence\Generic\Typo3QuerySettings */
         $querySettings = $this->objectManager->get(
@@ -568,9 +539,17 @@ class Cart
         );
         $querySettings->setStoragePageIds(array($this->cartConf['settings']['order']['pid']));
         $this->orderTransactionRepository->setDefaultQuerySettings($querySettings);
-        $orderTransaction = $this->orderTransactionRepository->findOneByTxnId($orderTransactionReference);
+        $this->orderTransaction = $this->orderTransactionRepository->findOneByTxnId($orderTransactionReference);
+    }
 
-        if ($orderTransaction) {
+    /**
+     * @param int $externalStatus
+     *
+     * @return void
+     */
+    protected function updatePayment($externalStatus)
+    {
+        if ($this->orderTransaction) {
             switch ($externalStatus) {
                 case 4000:
                     $internalStatus = 'paid';
@@ -579,16 +558,16 @@ class Cart
                     $internalStatus = 'canceled';
             }
 
-            $orderTransaction->setStatus($internalStatus);
-            $orderTransaction->setExternalStatusCode($externalStatus);
+            $this->orderTransaction->setStatus($internalStatus);
+            $this->orderTransaction->setExternalStatusCode($externalStatus);
 
-            $this->orderTransactionRepository->update($orderTransaction);
+            $this->orderTransactionRepository->update($this->orderTransaction);
 
-            $orderTransaction->getPayment()->setStatus($internalStatus);
+            $this->orderTransaction->getPayment()->setStatus($internalStatus);
 
             $this->persistenceManager->persistAll();
 
-            $this->orderItem = $orderTransaction->getPayment()->getItem();
+            $this->orderItem = $this->orderTransaction->getPayment()->getItem();
 
             $this->getCart();
 

@@ -26,6 +26,13 @@ use \TYPO3\CMS\Core\Utility\GeneralUtility;
 class Payment
 {
     /**
+     * Session Handler
+     *
+     * @var \Extcode\Cart\Service\SessionHandler
+     */
+    protected $sessionHandler;
+
+    /**
      * Object Manager
      *
      * @var \TYPO3\CMS\Extbase\Object\ObjectManager
@@ -83,6 +90,13 @@ class Payment
     protected $orderTransactionRepository;
 
     /**
+     * Cart Utility
+     *
+     * @var \Extcode\Cart\Utility\CartUtility
+     */
+    protected $cartUtility;
+
+    /**
      * Cart Settings
      *
      * @var array
@@ -130,6 +144,14 @@ class Payment
      * @var string
      */
     protected $cartSHash = '';
+
+    /**
+     * @param \Extcode\Cart\Service\SessionHandler $sessionHandler
+     */
+    public function injectSessionHandler(\Extcode\Cart\Service\SessionHandler $sessionHandler)
+    {
+        $this->sessionHandler = $sessionHandler;
+    }
 
     /**
      * @param \TYPO3\CMS\Extbase\Object\ObjectManagerInterface $objectManager
@@ -186,6 +208,15 @@ class Payment
     }
 
     /**
+     * @param \Extcode\Cart\Utility\CartUtility $cartUtility
+     */
+    public function injectCartUtility(
+        \Extcode\Cart\Utility\CartUtility $cartUtility
+    ) {
+        $this->cartUtility = $cartUtility;
+    }
+
+    /**
      * Intitialize
      */
     public function __construct()
@@ -225,7 +256,8 @@ class Payment
         $provider = $this->orderItem->getPayment()->getProvider();
 
         if ($provider != 'GIROSOLUTION_CREDITCARD' &&
-            $provider != 'GIROSOLUTION_GIROPAY'
+            $provider != 'GIROSOLUTION_GIROPAY' &&
+            $provider != 'GIROSOLUTION_PAYPAL'
         ) {
             return [$params];
         }
@@ -254,10 +286,18 @@ class Payment
             case 'GIROSOLUTION_GIROPAY':
                 $transactionType = 'giropay';
                 break;
+            case 'GIROSOLUTION_PAYPAL':
+                $transactionType = 'paypal';
+                break;
             default:
                 $transactionType = '';
         }
-        $this->handleRequest($transactionType);
+
+        $returnCode = $this->handleRequest($transactionType);
+
+        if ($returnCode == 1) {
+            $params['providerFailed'] = true;
+        }
 
         return [$params];
     }
@@ -267,12 +307,12 @@ class Payment
      *
      * @param string $transactionType
      *
-     * @return void
+     * @return int
      */
     protected function handleRequest($transactionType)
     {
         if (empty($transactionType)) {
-            return;
+            return 1;
         }
         $password = $this->cartGirosolutionConf['api'][$transactionType]['password'];
         $merchantId = $this->cartGirosolutionConf['api'][$transactionType]['merchantId'];
@@ -290,7 +330,7 @@ class Payment
         $request->addParam('merchantTxId', $merchantTxId);
         $request->addParam('amount', $amount);
         $request->addParam('currency', 'EUR');
-        if ($transactionType == 'creditCardTransaction') {
+        if ($transactionType == 'creditCard') {
             $request->addParam('type', 'SALE');
         }
         $request->addParam('purpose', $purpose);
@@ -301,19 +341,34 @@ class Payment
         if ($request->requestHasSucceeded()) {
             $reference = $request->getResponseParam('reference');
             $this->addOrderTransaction($reference);
+            $this->clearCart();
 
             $request->getResponseParam('redirect');
             $request->redirectCustomerToPaymentProvider();
+
+            return 0;
         } else {
             $this->markPaymentAsFailed();
 
             $request->getResponseParam('rc');
             $request->getResponseParam('msg');
+
             $message = $request->getResponseMessage(
                 $request->getResponseParam('rc'),
                 'DE'
             );
             $this->logMessage($message);
+
+            return 1;
+        }
+    }
+
+    protected function clearCart()
+    {
+        $paymentId = $this->orderItem->getPayment()->getServiceId();
+        if (intval($this->cartConf['payments']['options'][$paymentId]['preventClearCart']) != 1) {
+            $this->cart = $this->cartUtility->getNewCart($this->cartConf['settings']['cart'], $this->cartConf);
+            $this->sessionHandler->writeToSession($this->cart, $this->cartConf['settings']['cart']['pid']);
         }
     }
 
@@ -325,7 +380,7 @@ class Payment
      */
     protected function getApiUrl($transactionType, $returnUrlType)
     {
-        $apiUrl = $this->cartGirosolutionConf['api'][$transactionType]['url'];
+        $apiUrl = $this->cartGirosolutionConf['api']['url'];
         $apiUrl .= '?eID=' . $returnUrlType . 'GiroSolution&paymentType=' . $transactionType;
 
         return $apiUrl;
