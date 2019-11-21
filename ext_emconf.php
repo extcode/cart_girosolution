@@ -1,11 +1,11 @@
 <?php
 
-$EM_CONF[$_EXTKEY] = [
+$EM_CONF['cart_girosolution'] = [
     'title' => 'Cart - Girosolution',
     'description' => 'Shopping Cart(s) for TYPO3 - Girosolution Payment Provider',
     'category' => 'services',
-    'author' => 'Daniel Lorenz',
-    'author_email' => 'ext.cart.girosolution@extco.de',
+    'author' => 'Daniel Gohlke',
+    'author_email' => 'ext.cart@extco.de',
     'author_company' => 'extco.de UG (haftungsbeschränkt)',
     'shy' => '',
     'priority' => '',
@@ -17,12 +17,11 @@ $EM_CONF[$_EXTKEY] = [
     'modify_tables' => '',
     'clearCacheOnLoad' => 0,
     'lockType' => '',
-    'version' => '0.4.0',
+    'version' => '1.0.0',
     'constraints' => [
         'depends' => [
-            'typo3' => '6.2.0-8.99.99',
-            'php' => '5.4.0',
-            'cart' => '2.3.0',
+            'typo3' => '8.7.0-8.7.99',
+            'cart' => '5.3.0',
         ],
         'conflicts' => [],
         'suggests' => [],

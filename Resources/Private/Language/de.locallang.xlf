@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<xliff version="1.0">
+    <file source-language="en" target-language="de" datatype="plaintext" original="messages" date="2019-11-22T09:30:00Z" product-name="cart_girosolution">
+        <header/>
+        <body>
+
+            <trans-unit id="tx_cartgirosolution.controller.order.payment.action.redirect.paid">
+                <source>The order was successfully paid.</source>
+                <target>Die Bestellung wurde erfolgreich bezahlt.</target>
+            </trans-unit>
+            <trans-unit id="tx_cartgirosolution.controller.order.payment.action.redirect.canceled">
+                <source>The payment process was aborted.</source>
+                <target>Der Bezahlvorgang wurde abgebrochen.</target>
+            </trans-unit>
+            <trans-unit id="tx_cartgirosolution.controller.order.payment.action.redirect.error_occured">
+                <source>An error occurred while updating the order.</source>
+                <target>Es ist ein Fehler bei der Aktualisierung der Bestellung aufgetreten.</target>
+            </trans-unit>
+            <trans-unit id="tx_cartgirosolution.controller.order.payment.action.redirect.access_denied">
+                <source>Access denied!</source>
+                <target>Access denied!</target>
+            </trans-unit>
+
+            <trans-unit id="tx_cartgirosolution.payment_request.purpose">
+                <source>Order: %1$s</source>
+                <target>Bestellung: %1$s</target>
+            </trans-unit>
+
+        </body>
+    </file>
+</xliff>
