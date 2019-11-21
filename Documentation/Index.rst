@@ -18,37 +18,37 @@ EXT: CartGirosolution
 
 .. only:: html
 
-    :Version:
-        |release|
+   :Version:
+      |release|
 
-    :Sprache:
-        de
+   :Language:
+      en
 
-    :Beschreibung:
-        CartGirosolution ist eine Erweiterung, die ......
+   :Description:
+      Cart is a small but powerful extension which "solely" adds a shopping cart to your TYPO3 installation.
+      Cart Girosolution is a payment provider and implements the Girosolution Payment service.
 
-    :Keywords:
-        pdf
+   :Keywords:
+      cart, shop, shopping, e-commerce, ecommerce, checkout, payment, girosolution
 
-    :Autor:
-        Daniel Lorenz
+   :Autor:
+      Daniel Gohlke
 
-    :E-Mail:
-        ext.cart.girosolution@extco.de
+   :E-Mail:
+      ext.cart@extco.de
 
-    :Rendered:
-        |today|
+   :Rendered:
+      |today|
 
-    The content of this document is related to TYPO3,
-    a GNU/GPL CMS/Framework available from `www.typo3.org <https://typo3.org/>`__.
+   The content of this document is related to TYPO3,
+   a GNU/GPL CMS/Framework available from `www.typo3.org <https://typo3.org/>`__.
 
-    **Inhaltsverzeichnis**
+   **Table of Contents**
 
 .. toctree::
-    :maxdepth: 5
-    :titlesonly:
+   :maxdepth: 5
+   :titlesonly:
 
-    Introduction/Index
-    DeveloperManual/Index
-    AdministratorManual/Index
-    Misc/Index
+   Introduction/Index
+   AdministratorManual/Index
+   Changelog/Index

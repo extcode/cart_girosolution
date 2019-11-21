@@ -1,21 +1,37 @@
 <?php
+defined('TYPO3_MODE') or die();
 
-if (!defined('TYPO3_MODE')) {
-    die('Access denied.');
-}
+// configure plugins
+
+\TYPO3\CMS\Extbase\Utility\ExtensionUtility::configurePlugin(
+    'Extcode.cart_girosolution',
+    'Cart',
+    [
+        'Order\Payment' => 'redirect, notify',
+    ],
+    [
+        'Order\Payment' => 'redirect, notify',
+    ]
+);
+
+// configure signal slots
 
 $dispatcher = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(
     \TYPO3\CMS\Extbase\SignalSlot\Dispatcher::class
 );
-
 $dispatcher->connect(
-    'Extcode\Cart\Utility\OrderUtility',
-    'handlePaymentAfterOrder',
-    'Extcode\CartGirosolution\Service\Payment',
+    \Extcode\Cart\Utility\PaymentUtility::class,
+    'handlePayment',
+    \Extcode\CartGirosolution\Utility\PaymentUtility::class,
     'handlePayment'
 );
 
-if (TYPO3_MODE == 'FE') {
-    $TYPO3_CONF_VARS['FE']['eID_include']['notifyGiroSolution'] = 'EXT:cart_girosolution/Classes/Utility/eIDDispatcher.php';
-    $TYPO3_CONF_VARS['FE']['eID_include']['redirectGiroSolution'] = 'EXT:cart_girosolution/Classes/Utility/eIDDispatcher.php';
-}
+// exclude parameters from cHash
+
+$GLOBALS['TYPO3_CONF_VARS']['FE']['cacheHash']['excludedParameters'][] = 'gcReference';
+$GLOBALS['TYPO3_CONF_VARS']['FE']['cacheHash']['excludedParameters'][] = 'gcMerchantTxId';
+$GLOBALS['TYPO3_CONF_VARS']['FE']['cacheHash']['excludedParameters'][] = 'gcBackendTxId';
+$GLOBALS['TYPO3_CONF_VARS']['FE']['cacheHash']['excludedParameters'][] = 'gcAmount';
+$GLOBALS['TYPO3_CONF_VARS']['FE']['cacheHash']['excludedParameters'][] = 'gcCurrency';
+$GLOBALS['TYPO3_CONF_VARS']['FE']['cacheHash']['excludedParameters'][] = 'gcResultPayment';
+$GLOBALS['TYPO3_CONF_VARS']['FE']['cacheHash']['excludedParameters'][] = 'gcHash';

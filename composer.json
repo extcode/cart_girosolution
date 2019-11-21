@@ -15,53 +15,47 @@
     ],
     "authors": [
         {
-            "name": "Daniel Lorenz",
-            "email": "ext.cart.girosolution@extco.de",
+            "name": "Daniel Gohlke",
+            "email": "ext.cart@extco.de",
             "role": "Developer"
         }
     ],
     "support": {
-        "issues": "https://forge.typo3.org/projects/extension-cart_girosolution"
+        "issues": "https://github.com/extcode/cart_girosolution/issues"
     },
     "require": {
-        "php": ">=5.4.0",
-        "typo3/cms-core": "^6.2 || ^7.6 || ^8.6",
-        "extcode/cart": ">=2.1.0"
+        "php": ">=7.2.0 <7.4",
+        "typo3/cms-core": "^9.5",
+        "typo3/cms-extbase": "^9.5",
+        "extcode/cart": "^6.3",
+        "girosolution/girocheckout-sdk": "^2.2"
     },
     "require-dev": {
-        "namelesscoder/typo3-repository-client": "1.2.x-dev",
-        "mikey179/vfsStream": "~1.6.0",
-        "phpunit/phpunit": "~4.8.0"
+        "friendsofphp/php-cs-fixer": "^2.0",
+        "helmich/typo3-typoscript-lint": "^1.4"
     },
     "autoload": {
         "psr-4": {
             "Extcode\\CartGirosolution\\": "Classes"
-        },
-        "classmap": [
-            "Resources/Private/Library/GiroCheckout_SDK/"
-        ]
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Extcode\\CartGirosolution\\Tests\\": "Tests/",
-            "TYPO3\\CMS\\Core\\Tests\\": ".Build/vendor/typo3/cms/typo3/sysext/core/Tests/",
-            "TYPO3\\CMS\\Fluid\\Tests\\": ".Build/vendor/typo3/cms/typo3/sysext/fluid/Tests/"
         }
     },
     "replace": {
-        "cart_girosolution": "self.version"
+        "extcode/cart-girosolution": "self.version"
     },
     "config": {
         "vendor-dir": ".Build/vendor",
         "bin-dir": ".Build/bin"
     },
+    "scripts": {
+        "post-autoload-dump": [
+            "mkdir -p .Build/Web/typo3conf/ext/",
+            "[ -L .Build/Web/typo3conf/ext/cart_girosolution ] || ln -snvf ../../../../. .Build/Web/typo3conf/ext/cart_girosolution"
+        ]
+    },
     "extra": {
         "typo3/cms": {
             "cms-package-dir": "{$vendor-dir}/typo3/cms",
-            "web-dir": ".Build/Web",
-            "Package": {
-                "partOfMinimalUsableSystem": true
-            }
+            "web-dir": ".Build/Web"
         }
     }
 }

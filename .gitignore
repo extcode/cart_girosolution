@@ -1,4 +1,7 @@
-Documentation/_make
+.Build
+composer.lock
+
+.php_cs.cache
 
 .DS_Store
 .idea
