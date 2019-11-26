@@ -1,15 +1,10 @@
-.. ==================================================
-.. FOR YOUR INFORMATION
-.. --------------------------------------------------
-.. -*- coding: utf-8 -*- with BOM.
-
 .. include:: Includes.txt
 
 .. _start:
 
-===========================
+=====================
 EXT: CartGirosolution
-===========================
+=====================
 
 .. image:: Images/cart_girosolution_logo.png
    :height: 200
