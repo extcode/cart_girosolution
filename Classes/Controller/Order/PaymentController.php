@@ -212,6 +212,8 @@ class PaymentController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControll
      */
     protected function updatePaymentAndTransaction(\Extcode\Cart\Domain\Model\Order\Item $orderItem, string $status): bool
     {
+        $invokeFinisher = false;
+
         $payment = $orderItem->getPayment();
 
         foreach ($payment->getTransactions() as $transaction) {
