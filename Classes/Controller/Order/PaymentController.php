@@ -113,6 +113,8 @@ class PaymentController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControll
                     $this->invokeFinishers($orderItem, 'success');
                 }
 
+                $this->invokeFinishers($orderItem, 'successClearCart');
+
                 $this->redirect('show', 'Cart\Order', 'Cart', ['orderItem' => $orderItem]);
             } else {
                 $invokeFinisher = $this->updatePaymentAndTransaction($orderItem, 'canceled');
@@ -167,6 +169,25 @@ class PaymentController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControll
     protected function invokeFinishers(\Extcode\Cart\Domain\Model\Order\Item $orderItem, string $returnStatus)
     {
         $cartFromSession = $this->sessionHandler->restore($this->cartPluginSettings['settings']['cart']['pid']);
+
+        if (!$cartFromSession) {
+            $cartRepository = $this->objectManager->get(
+                \Extcode\Cart\Domain\Repository\CartRepository::class
+            );
+            $cartFromDatabase = $cartRepository->findOneByOrderItem($orderItem);
+
+            if (!$cartFromDatabase) {
+                $logManager = $this->objectManager->get(
+                    \TYPO3\CMS\Core\Log\LogManager::class
+                );
+                $logger = $logManager->getLogger(__CLASS__);
+                $logger->error('Can\'t get cart from session and database.', []);
+
+                return;
+            }
+
+            $cartFromSession = $cartFromDatabase->getCart();
+        }
 
         $finisherContext = $this->objectManager->get(
             \Extcode\Cart\Domain\Finisher\FinisherContext::class,
