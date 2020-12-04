@@ -1,27 +1,30 @@
 <?php
+declare(strict_types=1);
+namespace Extcode\CartGirosolution\EventListener\Order\Payment;
 
-namespace Extcode\CartGirosolution\Utility;
+/*
+ * This file is part of the package extcode/cart-girosolution.
+ *
+ * For the full copyright and license information, please read the
+ * LICENSE file that was distributed with this source code.
+ */
 
+use Extcode\Cart\Domain\Model\Cart;
+use Extcode\Cart\Domain\Model\Order\Item as OrderItem;
 use Extcode\Cart\Domain\Model\Order\Transaction;
 use Extcode\Cart\Domain\Repository\CartRepository;
 use Extcode\Cart\Domain\Repository\Order\PaymentRepository;
+use Extcode\Cart\Event\Order\PaymentEvent;
 use girosolution\GiroCheckout_SDK\GiroCheckout_SDK_Request;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\TypoScript\TypoScriptService;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManager;
-use TYPO3\CMS\Extbase\Mvc\Web\Request;
 use TYPO3\CMS\Extbase\Mvc\Web\Routing\UriBuilder;
-use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
-class PaymentUtility
+class ProviderRedirect
 {
     const PAYMENT_API_URL = 'https://frontend.pay1.de/frontend/v2/';
-
-    /**
-     * @var ObjectManager
-     */
-    protected $objectManager;
 
     /**
      * @var PersistenceManager
@@ -32,6 +35,16 @@ class PaymentUtility
      * @var ConfigurationManager
      */
     protected $configurationManager;
+
+    /**
+     * @var TypoScriptService
+     */
+    protected $typoScriptService;
+
+    /**
+     * @var UriBuilder
+     */
+    protected $uriBuilder;
 
     /**
      * @var CartRepository
@@ -68,9 +81,9 @@ class PaymentUtility
     protected $paymentQuery = [];
 
     /**
-     * Order Item
+     * Order OrderItem
      *
-     * @var \Extcode\Cart\Domain\Model\Order\Item
+     * @var OrderItem
      */
     protected $orderItem = null;
 
@@ -89,64 +102,52 @@ class PaymentUtility
     protected $cartSHash = '';
 
     /**
-     * @param \TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager $persistenceManager
+     * @param PersistenceManager $persistenceManager
      */
     public function injectPersistenceManager(
-        \TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager $persistenceManager
+        PersistenceManager $persistenceManager
     ) {
         $this->persistenceManager = $persistenceManager;
     }
 
-    /**
-     * Intitialize
-     */
-    public function __construct()
-    {
-        $this->objectManager = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(
-            \TYPO3\CMS\Extbase\Object\ObjectManager::class
-        );
-
-        $this->configurationManager = $this->objectManager->get(
-            \TYPO3\CMS\Extbase\Configuration\ConfigurationManager::class
-        );
+    public function __construct(
+        ConfigurationManager $configurationManager,
+        PersistenceManager $persistenceManager,
+        TypoScriptService $typoScriptService,
+        UriBuilder $uriBuilder,
+        CartRepository $cartRepository,
+        PaymentRepository $paymentRepository
+    ) {
+        $this->configurationManager = $configurationManager;
+        $this->persistenceManager = $persistenceManager;
+        $this->typoScriptService = $typoScriptService;
+        $this->uriBuilder = $uriBuilder;
+        $this->cartRepository = $cartRepository;
+        $this->paymentRepository = $paymentRepository;
 
         $this->conf = $this->configurationManager->getConfiguration(
-            \TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK,
+            ConfigurationManager::CONFIGURATION_TYPE_FRAMEWORK,
             'CartGirosolution'
         );
 
         $this->cartConf = $this->configurationManager->getConfiguration(
-            \TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK,
+            ConfigurationManager::CONFIGURATION_TYPE_FRAMEWORK,
             'Cart'
-        );
-
-        $this->cartRepository = $this->objectManager->get(
-            CartRepository::class
-        );
-
-        $this->paymentRepository = $this->objectManager->get(
-            PaymentRepository::class
         );
     }
 
-    /**
-     * @param array $params
-     *
-     * @return array
-     */
-    public function handlePayment(array $params): array
+    public function __invoke(PaymentEvent $event): void
     {
-        $this->orderItem = $params['orderItem'];
+        $this->orderItem = $event->getOrderItem();
 
         $payment = $this->orderItem->getPayment();
         $provider = $payment->getProvider();
-        list($provider, $clearingType) = explode('_', $provider);
+        [$provider, $clearingType] = explode('_', $provider);
 
         if ($provider !== 'GIROSOLUTION') {
-            return [$params];
+            return;
         }
 
-        $params['providerUsed'] = true;
         $paymentConf = [];
 
         switch ($clearingType) {
@@ -167,15 +168,13 @@ class PaymentUtility
                 $paymentConf = $this->conf['paydirekt'];
                 break;
             default:
-                return [$params];
+                return;
         }
 
-        $cart = $this->objectManager->get(
-            \Extcode\Cart\Domain\Model\Cart::class
-        );
+        $cart = new Cart();
         $cart->setOrderItem($this->orderItem);
-        $cart->setCart($params['cart']);
-        $cart->setPid($this->cartConf['settings']['order']['pid']);
+        $cart->setCart($event->getCart());
+        $cart->setPid((int)$this->cartConf['settings']['order']['pid']);
 
         $this->cartRepository->add($cart);
         $this->persistenceManager->persistAll();
@@ -234,8 +233,8 @@ class PaymentUtility
             $request->getResponseParam('reference');
             $request->getResponseParam('redirect');
 
-            $transaction = $this->objectManager->get(Transaction::class);
-            $transaction->setTxnId($request->getResponseParam('reference'));
+            $transaction = new Transaction();
+            $transaction->setTxnId((string)$request->getResponseParam('reference'));
             $transaction->setStatus('created');
 
             $payment->addTransaction($transaction);
@@ -245,25 +244,21 @@ class PaymentUtility
 
             $request->redirectCustomerToPaymentProvider();
         } else {
-            /* if the transaction did not succeed update your local system, get the responsecode and notify the customer */
+            // if the transaction did not succeed update your local system, get the responsecode and notify the customer
             $request->getResponseParam('rc');
             $request->getResponseParam('msg');
             $request->getResponseMessage($request->getResponseParam('rc'), 'DE');
         }
 
-        return [$params];
+        $event->setPropagationStopped(true);
     }
 
     /**
      * Builds a return URL to Cart order controller action
-     *
-     * @param string $action
-     * @param string $hash
-     * @return string
      */
     protected function buildReturnUrl(string $action, string $hash): string
     {
-        $pid = $this->cartConf['settings']['cart']['pid'];
+        $pid = (int)$this->cartConf['settings']['cart']['pid'];
 
         $arguments = [
             'tx_cartgirosolution_cart' => [
@@ -274,28 +269,13 @@ class PaymentUtility
             ]
         ];
 
-        $uriBuilder = $this->getUriBuilder();
+        $uriBuilder = $this->uriBuilder;
 
         return $uriBuilder->reset()
             ->setTargetPageUid($pid)
-            ->setTargetPageType($this->conf['redirectTypeNum'])
+            ->setTargetPageType((int)$this->conf['redirectTypeNum'])
             ->setCreateAbsoluteUri(true)
-            ->setUseCacheHash(false)
             ->setArguments($arguments)
             ->build();
-    }
-
-    /**
-     * @return UriBuilder
-     */
-    protected function getUriBuilder(): UriBuilder
-    {
-        $request = $this->objectManager->get(Request::class);
-        $request->setRequestURI(GeneralUtility::getIndpEnv('TYPO3_REQUEST_URL'));
-        $request->setBaseURI(GeneralUtility::getIndpEnv('TYPO3_SITE_URL'));
-        $uriBuilder = $this->objectManager->get(UriBuilder::class);
-        $uriBuilder->setRequest($request);
-
-        return $uriBuilder;
     }
 }

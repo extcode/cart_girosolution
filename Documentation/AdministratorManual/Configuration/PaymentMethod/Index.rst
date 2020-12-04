@@ -14,6 +14,7 @@ from Cart available.
                options {
                    2 {
                        provider = GIROSOLUTION_CREDITCARD
+                       processOrderCreateEvent = Extcode\CartGirosolution\Event\ProcessOrderCreateEvent
                        title = Girosolution - Credit Card
                        extra = 0.00
                        taxClassId = 1
@@ -22,6 +23,7 @@ from Cart available.
                    }
                    3 {
                        provider = GIROSOLUTION_GIROPAY
+                       processOrderCreateEvent = Extcode\CartGirosolution\Event\ProcessOrderCreateEvent
                        title = Girosolution - giropay
                        extra = 0.00
                        taxClassId = 1
@@ -30,6 +32,7 @@ from Cart available.
                    }
                    4 {
                        provider = GIROSOLUTION_PAYDIREKT
+                       processOrderCreateEvent = Extcode\CartGirosolution\Event\ProcessOrderCreateEvent
                        title = Girosolution - paydirekt
                        extra = 0.00
                        taxClassId = 1
@@ -38,6 +41,7 @@ from Cart available.
                    }
                    5 {
                        provider = GIROSOLUTION_PAYPAL
+                       processOrderCreateEvent = Extcode\CartGirosolution\Event\ProcessOrderCreateEvent
                        title = Girosolution - paypal
                        extra = 0.00
                        taxClassId = 1
@@ -67,6 +71,16 @@ from Cart available.
       * GIROSOLUTION_GIROPAY: giropay
       * GIROSOLUTION_PAYDIREKT: paydirekt
       * GIROSOLUTION_PAYPAL: PayPal
+
+.. container:: table-row
+
+   Property
+      plugin.tx_cart.payments....options.n.processOrderCreateEvent
+   Data type
+      string
+   Description
+      Defines that the event class name for payment provider which will triggered in `Order::createAction()`.
+      This information is mandatory.
 
 .. IMPORTANT::
 

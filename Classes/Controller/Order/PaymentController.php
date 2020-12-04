@@ -2,38 +2,63 @@
 
 namespace Extcode\CartGirosolution\Controller\Order;
 
+/*
+ * This file is part of the package extcode/cart-girosolution.
+ *
+ * For the full copyright and license information, please read the
+ * LICENSE file that was distributed with this source code.
+ */
+
+use Extcode\Cart\Domain\Model\Cart;
+use Extcode\Cart\Domain\Model\Order\Item;
+use Extcode\Cart\Domain\Repository\CartRepository;
+use Extcode\Cart\Domain\Repository\Order\ItemRepository as OrderItemRepository;
+use Extcode\Cart\Domain\Repository\Order\PaymentRepository;
+use Extcode\Cart\Service\SessionHandler;
+use Extcode\CartGirosolution\Event\Order\CancelEvent;
+use Extcode\CartGirosolution\Event\Order\FinishEvent;
+use TYPO3\CMS\Core\Messaging\AbstractMessage;
+use TYPO3\CMS\Core\Messaging\FlashMessage;
 use TYPO3\CMS\Core\Messaging\FlashMessageService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
+use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
+use TYPO3\CMS\Extbase\Persistence\Generic\Typo3QuerySettings;
 use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
 class PaymentController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
 {
     /**
-     * @var \TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager
+     * @var PersistenceManager
      */
     protected $persistenceManager;
 
     /**
      * Session Handler
      *
-     * @var \Extcode\Cart\Service\SessionHandler
+     * @var SessionHandler
      */
     protected $sessionHandler;
 
     /**
-     * @var \Extcode\Cart\Domain\Repository\CartRepository
+     * @var CartRepository
      */
     protected $cartRepository;
 
     /**
-     * @var \Extcode\Cart\Domain\Repository\Order\PaymentRepository
+     * @var PaymentRepository
      */
     protected $paymentRepository;
 
     /**
-     * @var \Extcode\Cart\Domain\Model\Cart
+     * @var OrderItemRepository
      */
-    protected $cart = null;
+    protected $orderItemRepository;
+
+    /**
+     * @var Cart
+     */
+    protected $cart;
 
     /**
      * @var array
@@ -45,61 +70,47 @@ class PaymentController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControll
      */
     protected $pluginSettings;
 
-    /**
-     * @param \TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager $persistenceManager
-     */
-    public function injectPersistenceManager(
-        \TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager $persistenceManager
-    ) {
+    public function injectPersistenceManager(PersistenceManager $persistenceManager): void
+    {
         $this->persistenceManager = $persistenceManager;
     }
 
-    /**
-     * @param \Extcode\Cart\Service\SessionHandler $sessionHandler
-     */
-    public function injectSessionHandler(
-        \Extcode\Cart\Service\SessionHandler $sessionHandler
-    ) {
+    public function injectSessionHandler(SessionHandler $sessionHandler): void
+    {
         $this->sessionHandler = $sessionHandler;
     }
 
-    /**
-     * @param \Extcode\Cart\Domain\Repository\CartRepository $cartRepository
-     */
-    public function injectCartRepository(
-        \Extcode\Cart\Domain\Repository\CartRepository $cartRepository
-    ) {
+    public function injectCartRepository(CartRepository $cartRepository): void
+    {
         $this->cartRepository = $cartRepository;
     }
 
-    /**
-     * @param \Extcode\Cart\Domain\Repository\Order\PaymentRepository $paymentRepository
-     */
-    public function injectPaymentRepository(
-        \Extcode\Cart\Domain\Repository\Order\PaymentRepository $paymentRepository
-    ) {
+    public function injectPaymentRepository(PaymentRepository $paymentRepository): void
+    {
         $this->paymentRepository = $paymentRepository;
     }
 
-    /**
-     * Initialize Action
-     */
-    protected function initializeAction()
+    public function injectOrderItemRepository(OrderItemRepository $orderItemRepository): void
+    {
+        $this->orderItemRepository = $orderItemRepository;
+    }
+
+    protected function initializeAction(): void
     {
         $this->cartPluginSettings =
             $this->configurationManager->getConfiguration(
-                \TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK,
+                ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK,
                 'Cart'
             );
 
         $this->pluginSettings =
             $this->configurationManager->getConfiguration(
-                \TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK,
+                ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK,
                 'CartGirosolution'
             );
     }
 
-    public function redirectAction()
+    public function redirectAction(): void
     {
         $this->loadCartByArgumentHash();
 
@@ -107,17 +118,25 @@ class PaymentController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControll
             $orderItem = $this->cart->getOrderItem();
 
             if (GeneralUtility::_GET('gcResultPayment') === '4000') {
-                $invokeFinisher = $this->updatePaymentAndTransaction($orderItem, 'paid');
+                $dispatchEvent = $this->updatePaymentAndTransaction($orderItem, 'paid');
 
-                if ($invokeFinisher) {
-                    $this->invokeFinishers($orderItem, 'success');
+                if ($dispatchEvent) {
+                    $finishEvent = new FinishEvent($this->cart->getCart(), $orderItem, $this->cartPluginSettings);
+                    $this->eventDispatcher->dispatch($finishEvent);
                 }
 
-                $this->invokeFinishers($orderItem, 'successClearCart');
-
-                $this->redirect('show', 'Cart\Order', 'Cart', ['orderItem' => $orderItem]);
+                $orderItemFromRepo = $this->orderItemRepository->findByUid($orderItem->getUid());
+                $this->redirect('show', 'Cart\Order', 'Cart', ['orderItem' => $orderItemFromRepo]);
             } else {
-                $invokeFinisher = $this->updatePaymentAndTransaction($orderItem, 'canceled');
+                $dispatchEvent = $this->updatePaymentAndTransaction($orderItem, 'canceled');
+
+                $this->restoreCartSession();
+
+                if ($dispatchEvent) {
+                    $orderItem = $this->cart->getOrderItem();
+                    $finishEvent = new CancelEvent($this->cart->getCart(), $orderItem, $this->cartPluginSettings);
+                    $this->eventDispatcher->dispatch($finishEvent);
+                }
 
                 $this->addFlashMessageToCartCart('tx_cartgirosolution.controller.order.payment.action.redirect.canceled');
 
@@ -127,15 +146,15 @@ class PaymentController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControll
             $this->addFlashMessage(
                 LocalizationUtility::translate(
                     'tx_cartgirosolution.controller.order.payment.action.redirect.error_occured',
-                    $this->extensionName
+                    'CartGirosolution'
                 ),
                 '',
-                \TYPO3\CMS\Core\Messaging\AbstractMessage::ERROR
+                AbstractMessage::ERROR
             );
         }
     }
 
-    public function notifyAction()
+    public function notifyAction(): string
     {
         $this->loadCartByArgumentHash();
 
@@ -143,15 +162,21 @@ class PaymentController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControll
             $orderItem = $this->cart->getOrderItem();
 
             if (GeneralUtility::_GET('gcResultPayment') === '4000') {
-                $invokeFinisher = $this->updatePaymentAndTransaction($orderItem, 'paid');
+                $dispatchEvent = $this->updatePaymentAndTransaction($orderItem, 'paid');
 
-                if ($invokeFinisher) {
-                    $this->invokeFinishers($orderItem, 'success');
+                if ($dispatchEvent) {
+                    $orderItem = $this->cart->getOrderItem();
+                    $finishEvent = new FinishEvent($this->cart->getCart(), $orderItem, $this->cartPluginSettings);
+                    $this->eventDispatcher->dispatch($finishEvent);
                 }
             } else {
-                $invokeFinisher = $this->updatePaymentAndTransaction($orderItem, 'canceled');
+                $dispatchEvent = $this->updatePaymentAndTransaction($orderItem, 'canceled');
 
-                $this->addFlashMessageToCartCart('tx_cartgirosolution.controller.order.payment.action.redirect.canceled');
+                if ($dispatchEvent) {
+                    $orderItem = $this->cart->getOrderItem();
+                    $finishEvent = new CancelEvent($this->cart->getCart(), $orderItem, $this->cartPluginSettings);
+                    $this->eventDispatcher->dispatch($finishEvent);
+                }
             }
 
             return 'OK';
@@ -160,80 +185,9 @@ class PaymentController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControll
         return 'ERROR';
     }
 
-    /**
-     * Executes all finishers of this form
-     *
-     * @param \Extcode\Cart\Domain\Model\Order\Item $orderItem
-     * @param string $returnStatus
-     */
-    protected function invokeFinishers(\Extcode\Cart\Domain\Model\Order\Item $orderItem, string $returnStatus)
+    protected function updatePaymentAndTransaction(Item $orderItem, string $status): bool
     {
-        $cartFromSession = $this->sessionHandler->restore($this->cartPluginSettings['settings']['cart']['pid']);
-
-        if (!$cartFromSession) {
-            $cartRepository = $this->objectManager->get(
-                \Extcode\Cart\Domain\Repository\CartRepository::class
-            );
-            $cartFromDatabase = $cartRepository->findOneByOrderItem($orderItem);
-
-            if (!$cartFromDatabase) {
-                $logManager = $this->objectManager->get(
-                    \TYPO3\CMS\Core\Log\LogManager::class
-                );
-                $logger = $logManager->getLogger(__CLASS__);
-                $logger->error('Can\'t get cart from session and database.', []);
-
-                return;
-            }
-
-            $cartFromSession = $cartFromDatabase->getCart();
-        }
-
-        $finisherContext = $this->objectManager->get(
-            \Extcode\Cart\Domain\Finisher\FinisherContext::class,
-            $this->cartPluginSettings,
-            $cartFromSession,
-            $orderItem,
-            $this->getControllerContext()
-        );
-
-        if (is_array($this->pluginSettings['finishers']) &&
-            is_array($this->pluginSettings['finishers']['order']) &&
-            is_array($this->pluginSettings['finishers']['order'][$returnStatus])
-        ) {
-            ksort($this->pluginSettings['finishers']['order'][$returnStatus]);
-            foreach ($this->pluginSettings['finishers']['order'][$returnStatus] as $finisherConfig) {
-                $finisherClass = $finisherConfig['class'];
-
-                if (class_exists($finisherClass)) {
-                    $finisher = $this->objectManager->get($finisherClass);
-                    $finisher->execute($finisherContext);
-                    if ($finisherContext->isCancelled()) {
-                        break;
-                    }
-                } else {
-                    $logManager = $this->objectManager->get(
-                        \TYPO3\CMS\Core\Log\LogManager::class
-                    );
-                    $logger = $logManager->getLogger(__CLASS__);
-                    $logger->error('Can\'t find Finisher class \'' . $finisherClass . '\'.', []);
-                }
-            }
-        }
-    }
-
-    /**
-     * @param \Extcode\Cart\Domain\Model\Order\Item $orderItem
-     * @param string $status
-     *
-     * @return bool
-     *
-     * @throws \TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException
-     * @throws \TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException
-     */
-    protected function updatePaymentAndTransaction(\Extcode\Cart\Domain\Model\Order\Item $orderItem, string $status): bool
-    {
-        $invokeFinisher = false;
+        $dispatchEvent = false;
 
         $payment = $orderItem->getPayment();
 
@@ -251,55 +205,53 @@ class PaymentController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControll
 
         if ($payment->getStatus() !== $status) {
             $payment->setStatus($status);
-            $invokeFinisher = true;
+            $dispatchEvent = true;
         }
 
         $this->paymentRepository->update($payment);
         $this->persistenceManager->persistAll();
 
-        return $invokeFinisher;
+        return $dispatchEvent;
     }
 
-    /**
-     * @param string $translationKey
-     *
-     * @throws \TYPO3\CMS\Core\Exception
-     */
     protected function addFlashMessageToCartCart(string $translationKey): void
     {
-        $flashMessage = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(
-            \TYPO3\CMS\Core\Messaging\FlashMessage::class,
+        $flashMessage = GeneralUtility::makeInstance(
+            FlashMessage::class,
             LocalizationUtility::translate(
                 $translationKey,
-                $this->extensionName
+                'CartGirosolution'
             ),
             '',
-            \TYPO3\CMS\Core\Messaging\AbstractMessage::ERROR,
+            AbstractMessage::ERROR,
             true
         );
 
-        $flashMessageService = $this->objectManager->get(FlashMessageService::class);
+        $flashMessageService = new FlashMessageService();
         $messageQueue = $flashMessageService->getMessageQueueByIdentifier('extbase.flashmessages.tx_cart_cart');
         $messageQueue->enqueue($flashMessage);
     }
 
-    /**
-     * @throws \TYPO3\CMS\Extbase\Mvc\Exception\NoSuchArgumentException
-     */
     protected function loadCartByArgumentHash(): void
     {
         if ($this->request->hasArgument('hash')) {
             $hash = $this->request->getArgument('hash');
 
             if (!empty($hash)) {
-                $querySettings = $this->objectManager->get(
-                    \TYPO3\CMS\Extbase\Persistence\Generic\Typo3QuerySettings::class
-                );
+                $querySettings = new Typo3QuerySettings();
                 $querySettings->setStoragePageIds([$this->cartPluginSettings['settings']['order']['pid']]);
                 $this->cartRepository->setDefaultQuerySettings($querySettings);
 
                 $this->cart = $this->cartRepository->findOneBySHash($hash);
             }
         }
+    }
+
+    protected function restoreCartSession(): void
+    {
+        $cart = $this->cart->getCart();
+        $cart->resetOrderNumber();
+        $cart->resetInvoiceNumber();
+        $this->sessionHandler->write($cart, $this->cartPluginSettings['settings']['cart']['pid']);
     }
 }

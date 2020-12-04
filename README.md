@@ -1,6 +1,6 @@
 # Cart Girosolution
 
-[![Build Status](https://travis-ci.org/extcode/cart_girosolution.svg?branch=master)](https://travis-ci.org/extcode/cart_girosolution)
+[![Build Status](https://travis-ci.org/extcode/cart_girosolution.svg?branch=3.x)](https://travis-ci.org/extcode/cart_girosolution)
 
 Cart is a small but powerful extension which "solely" adds a shopping cart to your TYPO3 installation.
 Cart Girosolution is a payment provider.
@@ -25,8 +25,9 @@ The extension can only be installed via composer. Installation via the TER is no
 
 | Cart Girosolution | Cart       | TYPO3      | PHP       | Support/Development                     |
 | ----------------- | ---------- | ---------- | ----------|---------------------------------------- |
-| 2.x.x             | 6.3.0      | 9.5        | 7.2 - 7.3 | Features, Bugfixes, Security Updates    |
-| 1.x.x             | 5.3.0      | 8.7        | 7.0 - 7.3 | Features, Bugfixes, Security Updates    |
+| 3.x.x             | 7.0.0      | 10.4       | 7.2 - 7.4 | Features, Bugfixes, Security Updates    |
+| 2.x.x             | 6.3.0      | 9.5        | 7.2 - 7.4 | Features, Bugfixes, Security Updates    |
+| 1.x.x             | 5.3.0      | 8.7        | 7.0 - 7.4 | Bugfixes, Security Updates              |
 
 ### 3.2. Changelog
 
@@ -41,9 +42,10 @@ News uses **semantic versioning** which basically means for you, that
 
 ## 4. Sponsoring
 
-*  Ask for an invoice.
-*  [GitHub Sponsors](https://github.com/sponsors/extcode)
-*  [PayPal.Me](https://paypal.me/extcart)
+* Ask for an invoice.
+* [GitHub Sponsors](https://github.com/sponsors/extcode)
+* [PayPal.Me](https://paypal.me/extcart)
+* [Patreon](https://patreon.com/ext_cart)
 
 [1]: https://docs.typo3.org/typo3cms/extensions/cart_events/
 [2]: https://getcomposer.org/

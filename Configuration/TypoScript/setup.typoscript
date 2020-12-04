@@ -16,19 +16,4 @@ cartGirosolution {
 
 plugin.tx_cartgirosolution {
     redirectTypeNum = {$plugin.tx_cartgirosolution.redirectTypeNum}
-
-    finishers {
-        order {
-            success {
-                400 {
-                    class = Extcode\Cart\Domain\Finisher\Order\EmailFinisher
-                }
-            }
-            successClearCart {
-                500 {
-                    class = Extcode\Cart\Domain\Finisher\Order\ClearCartFinisher
-                }
-            }
-        }
-    }
 }

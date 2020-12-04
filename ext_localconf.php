@@ -4,26 +4,14 @@ defined('TYPO3_MODE') or die();
 // configure plugins
 
 \TYPO3\CMS\Extbase\Utility\ExtensionUtility::configurePlugin(
-    'Extcode.cart_girosolution',
+    'CartGirosolution',
     'Cart',
     [
-        'Order\Payment' => 'redirect, notify',
+        \Extcode\CartGirosolution\Controller\Order\PaymentController::class => 'redirect, notify',
     ],
     [
-        'Order\Payment' => 'redirect, notify',
+        \Extcode\CartGirosolution\Controller\Order\PaymentController::class => 'redirect, notify',
     ]
-);
-
-// configure signal slots
-
-$dispatcher = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(
-    \TYPO3\CMS\Extbase\SignalSlot\Dispatcher::class
-);
-$dispatcher->connect(
-    \Extcode\Cart\Utility\PaymentUtility::class,
-    'handlePayment',
-    \Extcode\CartGirosolution\Utility\PaymentUtility::class,
-    'handlePayment'
 );
 
 // exclude parameters from cHash
