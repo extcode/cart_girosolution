@@ -245,7 +245,7 @@ class PaymentUtility
 
             $request->redirectCustomerToPaymentProvider();
         } else {
-            /* if the transaction did not succeed update your local system, get the responsecode and notify the customer */
+            // if the transaction did not succeed update your local system, get the responsecode and notify the customer
             $request->getResponseParam('rc');
             $request->getResponseParam('msg');
             $request->getResponseMessage($request->getResponseParam('rc'), 'DE');
