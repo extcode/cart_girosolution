@@ -47,7 +47,7 @@ lint:yaml:
   before_script:
     - pip install yamllint==1.10.0
   script:
-    - yamllint -c Build/yamllint.yaml Configuration/ Resources/ .travis.yml
+    - yamllint -c Build/yamllint.yaml Configuration/ Resources/
 
 lint:php72:
   stage: lint
@@ -64,6 +64,18 @@ lint:php73:
 lint:php74:
   stage: lint
   image: php:7.4-alpine
+  script:
+    - find . -name \*.php -exec php -l "{}" \;
+
+lint:php80:
+  stage: lint
+  image: php:8.0-alpine
+  script:
+    - find . -name \*.php -exec php -l "{}" \;
+
+lint:php81:
+  stage: lint
+  image: php:8.1-alpine
   script:
     - find . -name \*.php -exec php -l "{}" \;
 
@@ -96,7 +108,7 @@ sonarqube:
     SONAR_SOURCES: "./Classes"
     SONAR_GITLAB_PROJECT_ID: "$CI_PROJECT_ID"
   script:
-    - echo "sonar.projectKey=cart_girosolution-3.x" > sonar-project.properties
+    - echo "sonar.projectKey=cart_girosolution-4.x" > sonar-project.properties
     - gitlab-sonar-scanner -Dsonar.php.coverage.reportPath=phpunit.coverage.xml -Dsonar.php.tests.reportPath=phpunit.report.xml
   allow_failure: true
 
@@ -112,5 +124,5 @@ sonarqube-reports:
     SONAR_SOURCES: "./Classes"
     SONAR_TESTS: "./Tests"
   script:
-    - echo "sonar.projectKey=cart_girosolution-3.x" > sonar-project.properties
+    - echo "sonar.projectKey=cart_girosolution-4.x" > sonar-project.properties
     - gitlab-sonar-scanner -Dsonar.php.coverage.reportPath=phpunit.coverage.xml -Dsonar.php.tests.reportPath=phpunit.report.xml

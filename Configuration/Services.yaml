@@ -9,6 +9,10 @@ services:
     exclude: '../Classes/Widgets/*'
 
   Extcode\CartGirosolution\EventListener\Order\Payment\ClearCart:
+    arguments:
+      $cartUtility: '@Extcode\Cart\Utility\CartUtility'
+      $parserUtility: '@Extcode\Cart\Utility\ParserUtility'
+      $sessionHandler: '@Extcode\Cart\Service\SessionHandler'
     tags:
       - name: event.listener
         identifier: 'cart-girosolution--order--payment--clear-cart'
@@ -28,7 +32,7 @@ services:
         event: Extcode\Cart\Event\Order\PaymentEvent
 
   Extcode\CartGirosolution\EventListener\Order\Finish\Email:
-    class: 'Extcode\Cart\EventListener\ProcessOrderCreate\Email'
+    class: 'Extcode\Cart\EventListener\Order\Finish\Email'
     tags:
       - name: event.listener
         identifier: 'cart-girosolution--order--finish--email'

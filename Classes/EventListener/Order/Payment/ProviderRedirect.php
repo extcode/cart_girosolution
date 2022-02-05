@@ -223,6 +223,8 @@ class ProviderRedirect
                 $request->addParam('shippingCountry', $this->orderItem->getBillingAddress()->getCountry());
                 $request->addParam('shippingEmail', $this->orderItem->getBillingAddress()->getEmail());
             }
+        } elseif ($clearingType === 'PAYPAL') {
+            $request->addParam('type', 'SALE');
         }
 
         $request->submit();

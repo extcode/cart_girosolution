@@ -22,11 +22,12 @@ use TYPO3\CMS\Core\Messaging\FlashMessage;
 use TYPO3\CMS\Core\Messaging\FlashMessageService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
+use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\Typo3QuerySettings;
 use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
-class PaymentController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
+class PaymentController extends ActionController
 {
     /**
      * @var PersistenceManager
@@ -238,7 +239,7 @@ class PaymentController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControll
             $hash = $this->request->getArgument('hash');
 
             if (!empty($hash)) {
-                $querySettings = new Typo3QuerySettings();
+                $querySettings = GeneralUtility::makeInstance(Typo3QuerySettings::class);
                 $querySettings->setStoragePageIds([$this->cartPluginSettings['settings']['order']['pid']]);
                 $this->cartRepository->setDefaultQuerySettings($querySettings);
 

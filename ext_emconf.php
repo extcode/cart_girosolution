@@ -17,11 +17,11 @@ $EM_CONF['cart_girosolution'] = [
     'modify_tables' => '',
     'clearCacheOnLoad' => 0,
     'lockType' => '',
-    'version' => '3.0.0',
+    'version' => '4.0.0',
     'constraints' => [
         'depends' => [
-            'typo3' => '10.4.0-10.4.99',
-            'cart' => '7.4.0',
+            'typo3' => '10.4.0-11.5.99',
+            'cart' => '8.0.0',
         ],
         'conflicts' => [],
         'suggests' => [],
