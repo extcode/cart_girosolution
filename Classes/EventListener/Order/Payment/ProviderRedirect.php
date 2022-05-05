@@ -225,6 +225,10 @@ class ProviderRedirect
             }
         }
 
+        if ($clearingType === 'PAYPAL') {
+            $request->addParam('type', 'SALE');
+        }
+
         $request->submit();
 
         if ($request->requestHasSucceeded()) {
