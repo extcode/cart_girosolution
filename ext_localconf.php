@@ -1,16 +1,20 @@
 <?php
-defined('TYPO3_MODE') or die();
+
+defined('TYPO3') or die();
+
+use Extcode\CartGirosolution\Controller\Order\PaymentController;
+use TYPO3\CMS\Extbase\Utility\ExtensionUtility;
 
 // configure plugins
 
-\TYPO3\CMS\Extbase\Utility\ExtensionUtility::configurePlugin(
+ExtensionUtility::configurePlugin(
     'CartGirosolution',
     'Cart',
     [
-        \Extcode\CartGirosolution\Controller\Order\PaymentController::class => 'redirect, notify',
+        PaymentController::class => 'redirect, notify',
     ],
     [
-        \Extcode\CartGirosolution\Controller\Order\PaymentController::class => 'redirect, notify',
+        PaymentController::class => 'redirect, notify',
     ]
 );
 
