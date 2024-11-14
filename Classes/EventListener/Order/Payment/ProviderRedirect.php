@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 namespace Extcode\CartGirosolution\EventListener\Order\Payment;
 
 /*
@@ -16,7 +18,6 @@ use Extcode\Cart\Domain\Repository\CartRepository;
 use Extcode\Cart\Domain\Repository\Order\PaymentRepository;
 use Extcode\Cart\Event\Order\PaymentEvent;
 use girosolution\GiroCheckout_SDK\GiroCheckout_SDK_Request;
-use TYPO3\CMS\Core\TypoScript\TypoScriptService;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManager;
 use TYPO3\CMS\Extbase\Mvc\Web\Routing\UriBuilder;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
@@ -24,107 +25,19 @@ use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
 class ProviderRedirect
 {
-    const PAYMENT_API_URL = 'https://frontend.pay1.de/frontend/v2/';
+    private array $conf = [];
 
-    /**
-     * @var PersistenceManager
-     */
-    protected $persistenceManager;
+    private array $cartConf = [];
 
-    /**
-     * @var ConfigurationManager
-     */
-    protected $configurationManager;
-
-    /**
-     * @var TypoScriptService
-     */
-    protected $typoScriptService;
-
-    /**
-     * @var UriBuilder
-     */
-    protected $uriBuilder;
-
-    /**
-     * @var CartRepository
-     */
-    protected $cartRepository;
-
-    /**
-     * @var PaymentRepository
-     */
-    protected $paymentRepository;
-
-    /**
-     * @var array
-     */
-    protected $conf = [];
-
-    /**
-     * @var array
-     */
-    protected $cartConf = [];
-
-    /**
-     * Payment Query Url
-     *
-     * @var string
-     */
-    protected $paymentQueryUrl = self::PAYMENT_API_URL;
-
-    /**
-     * Payment Query
-     *
-     * @var array
-     */
-    protected $paymentQuery = [];
-
-    /**
-     * Order OrderItem
-     *
-     * @var OrderItem
-     */
-    protected $orderItem = null;
-
-    /**
-     * CartFHash
-     *
-     * @var string
-     */
-    protected $cartFHash = '';
-
-    /**
-     * CartSHash
-     *
-     * @var string
-     */
-    protected $cartSHash = '';
-
-    /**
-     * @param PersistenceManager $persistenceManager
-     */
-    public function injectPersistenceManager(
-        PersistenceManager $persistenceManager
-    ) {
-        $this->persistenceManager = $persistenceManager;
-    }
+    private ?OrderItem $orderItem = null;
 
     public function __construct(
-        ConfigurationManager $configurationManager,
-        PersistenceManager $persistenceManager,
-        TypoScriptService $typoScriptService,
-        UriBuilder $uriBuilder,
-        CartRepository $cartRepository,
-        PaymentRepository $paymentRepository
+        private readonly ConfigurationManager $configurationManager,
+        private readonly PersistenceManager $persistenceManager,
+        private readonly UriBuilder $uriBuilder,
+        private readonly CartRepository $cartRepository,
+        private readonly PaymentRepository $paymentRepository
     ) {
-        $this->configurationManager = $configurationManager;
-        $this->persistenceManager = $persistenceManager;
-        $this->typoScriptService = $typoScriptService;
-        $this->uriBuilder = $uriBuilder;
-        $this->cartRepository = $cartRepository;
-        $this->paymentRepository = $paymentRepository;
-
         $this->conf = $this->configurationManager->getConfiguration(
             ConfigurationManager::CONFIGURATION_TYPE_FRAMEWORK,
             'CartGirosolution'
@@ -147,8 +60,6 @@ class ProviderRedirect
         if ($provider !== 'GIROSOLUTION') {
             return;
         }
-
-        $paymentConf = [];
 
         switch ($clearingType) {
             case 'CREDITCARD':
@@ -179,9 +90,6 @@ class ProviderRedirect
         $this->cartRepository->add($cart);
         $this->persistenceManager->persistAll();
 
-        $this->cartFHash = $cart->getFHash();
-        $this->cartSHash = $cart->getSHash();
-
         $request->setSecret($paymentConf['password']);
         $request->addParam('merchantId', $paymentConf['merchantId'])
             ->addParam('projectId', $paymentConf['projectId'])
@@ -194,12 +102,12 @@ class ProviderRedirect
                     'tx_cartgirosolution.payment_request.purpose',
                     'CartGirosolution',
                     [
-                        $this->orderItem->getOrderNumber()
+                        $this->orderItem->getOrderNumber(),
                     ]
                 )
             )
-            ->addParam('urlRedirect', $this->buildReturnUrl('redirect', $this->cartSHash))
-            ->addParam('urlNotify', $this->buildReturnUrl('notify', $this->cartSHash));
+            ->addParam('urlRedirect', $this->buildReturnUrl('redirect', $cart->getSHash()))
+            ->addParam('urlNotify', $this->buildReturnUrl('notify', $cart->getSHash()));
 
         if ($clearingType === 'PAYDIREKT') {
             $request->addParam('orderId', $this->orderItem->getOrderNumber());
@@ -267,8 +175,8 @@ class ProviderRedirect
                 'controller' => 'Order\Payment',
                 'order' => $this->orderItem->getUid(),
                 'action' => $action,
-                'hash' => $hash
-            ]
+                'hash' => $hash,
+            ],
         ];
 
         $uriBuilder = $this->uriBuilder;

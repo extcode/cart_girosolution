@@ -9,10 +9,6 @@ services:
     exclude: '../Classes/Widgets/*'
 
   Extcode\CartGirosolution\EventListener\Order\Payment\ClearCart:
-    arguments:
-      $cartUtility: '@Extcode\Cart\Utility\CartUtility'
-      $parserUtility: '@Extcode\Cart\Utility\ParserUtility'
-      $sessionHandler: '@Extcode\Cart\Service\SessionHandler'
     tags:
       - name: event.listener
         identifier: 'cart-girosolution--order--payment--clear-cart'
@@ -20,12 +16,6 @@ services:
         before: 'cart-girosolution--order--payment--provider-redirect'
 
   Extcode\CartGirosolution\EventListener\Order\Payment\ProviderRedirect:
-    arguments:
-      $configurationManager: '@TYPO3\CMS\Extbase\Configuration\ConfigurationManager'
-      $persistenceManager: '@TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager'
-      $typoScriptService: '@TYPO3\CMS\Core\TypoScript\TypoScriptService'
-      $cartRepository: '@Extcode\Cart\Domain\Repository\CartRepository'
-      $paymentRepository: '@Extcode\Cart\Domain\Repository\Order\PaymentRepository'
     tags:
       - name: event.listener
         identifier: 'cart-girosolution--order--payment--provider-redirect'

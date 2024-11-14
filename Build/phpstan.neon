@@ -1,0 +1,9 @@
+includes:
+  - phpstan-baseline.neon
+parameters:
+  level: 4
+  paths:
+    - ../Classes
+    - ../Configuration
+    - ../ext_emconf.php
+    - ../ext_localconf.php
