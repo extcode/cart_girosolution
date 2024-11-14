@@ -1,4 +1,4 @@
-.. include:: Includes.txt
+.. include:: Includes.rst.txt
 
 .. _start:
 
@@ -45,5 +45,5 @@ EXT: CartGirosolution
    :titlesonly:
 
    Introduction/Index
-   AdministratorManual/Index
+   Administrator/Index
    Changelog/Index

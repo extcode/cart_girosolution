@@ -9,14 +9,17 @@ namespace Extcode\CartGirosolution\Controller\Order;
  * LICENSE file that was distributed with this source code.
  */
 
+use Exception;
 use Extcode\Cart\Domain\Model\Cart;
 use Extcode\Cart\Domain\Model\Order\Item;
+use Extcode\Cart\Domain\Model\Order\Transaction;
 use Extcode\Cart\Domain\Repository\CartRepository;
 use Extcode\Cart\Domain\Repository\Order\ItemRepository as OrderItemRepository;
 use Extcode\Cart\Domain\Repository\Order\PaymentRepository;
 use Extcode\Cart\Service\SessionHandler;
 use Extcode\CartGirosolution\Event\Order\CancelEvent;
 use Extcode\CartGirosolution\Event\Order\FinishEvent;
+use Psr\Http\Message\ResponseInterface;
 use TYPO3\CMS\Core\Messaging\AbstractMessage;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
 use TYPO3\CMS\Core\Messaging\FlashMessageService;
@@ -24,77 +27,23 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
-use TYPO3\CMS\Extbase\Persistence\Generic\Typo3QuerySettings;
 use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
 class PaymentController extends ActionController
 {
-    /**
-     * @var PersistenceManager
-     */
-    protected $persistenceManager;
+    protected ?Cart $cart = null;
 
-    /**
-     * Session Handler
-     *
-     * @var SessionHandler
-     */
-    protected $sessionHandler;
+    protected array $cartPluginSettings;
 
-    /**
-     * @var CartRepository
-     */
-    protected $cartRepository;
+    protected array $pluginSettings;
 
-    /**
-     * @var PaymentRepository
-     */
-    protected $paymentRepository;
-
-    /**
-     * @var OrderItemRepository
-     */
-    protected $orderItemRepository;
-
-    /**
-     * @var Cart
-     */
-    protected $cart;
-
-    /**
-     * @var array
-     */
-    protected $cartPluginSettings;
-
-    /**
-     * @var array
-     */
-    protected $pluginSettings;
-
-    public function injectPersistenceManager(PersistenceManager $persistenceManager): void
-    {
-        $this->persistenceManager = $persistenceManager;
-    }
-
-    public function injectSessionHandler(SessionHandler $sessionHandler): void
-    {
-        $this->sessionHandler = $sessionHandler;
-    }
-
-    public function injectCartRepository(CartRepository $cartRepository): void
-    {
-        $this->cartRepository = $cartRepository;
-    }
-
-    public function injectPaymentRepository(PaymentRepository $paymentRepository): void
-    {
-        $this->paymentRepository = $paymentRepository;
-    }
-
-    public function injectOrderItemRepository(OrderItemRepository $orderItemRepository): void
-    {
-        $this->orderItemRepository = $orderItemRepository;
-    }
+    public function __construct(
+        private readonly PersistenceManager $persistenceManager,
+        private readonly SessionHandler $sessionHandler,
+        private readonly CartRepository $cartRepository,
+        private readonly OrderItemRepository $orderItemRepository,
+        private readonly PaymentRepository $paymentRepository,
+    ) {}
 
     protected function initializeAction(): void
     {
@@ -111,82 +60,85 @@ class PaymentController extends ActionController
             );
     }
 
-    public function redirectAction(): void
+    public function redirectAction(): ResponseInterface
     {
-        $this->loadCartByArgumentHash();
+        $this->cart = $this->loadCartByArgumentHash();
 
-        if ($this->cart) {
-            $orderItem = $this->cart->getOrderItem();
+        if (is_null($this->cart)) {
+            // todo: log and throw an exception
+        }
 
-            if (GeneralUtility::_GET('gcResultPayment') === '4000') {
-                $dispatchEvent = $this->updatePaymentAndTransaction($orderItem, 'paid');
+        $orderItem = $this->cart->getOrderItem();
 
-                if ($dispatchEvent) {
-                    $finishEvent = new FinishEvent($this->cart->getCart(), $orderItem, $this->cartPluginSettings);
-                    $this->eventDispatcher->dispatch($finishEvent);
-                }
+        if (GeneralUtility::_GET('gcResultPayment') === '4000') {
+            $dispatchEvent = $this->updatePaymentAndTransaction($orderItem, 'paid');
 
-                $orderItemFromRepo = $this->orderItemRepository->findByUid($orderItem->getUid());
-                $this->redirect('show', 'Cart\Order', 'Cart', ['orderItem' => $orderItemFromRepo]);
-            } else {
-                $dispatchEvent = $this->updatePaymentAndTransaction($orderItem, 'canceled');
-
-                $this->restoreCartSession();
-
-                if ($dispatchEvent) {
-                    $orderItem = $this->cart->getOrderItem();
-                    $finishEvent = new CancelEvent($this->cart->getCart(), $orderItem, $this->cartPluginSettings);
-                    $this->eventDispatcher->dispatch($finishEvent);
-                }
-
-                $this->addFlashMessageToCartCart('tx_cartgirosolution.controller.order.payment.action.redirect.canceled');
-
-                $this->redirect('show', 'Cart\Cart', 'Cart');
+            if ($dispatchEvent) {
+                $finishEvent = new FinishEvent($this->cart->getCart(), $orderItem, $this->cartPluginSettings);
+                $this->eventDispatcher->dispatch($finishEvent);
             }
-        } else {
-            $this->addFlashMessage(
-                LocalizationUtility::translate(
-                    'tx_cartgirosolution.controller.order.payment.action.redirect.error_occured',
-                    'CartGirosolution'
-                ),
-                '',
-                AbstractMessage::ERROR
+
+            $orderItemFromRepo = $this->orderItemRepository->findByUid($orderItem->getUid());
+
+            return $this->redirect(
+                'show',
+                'Cart\Order',
+                'Cart',
+                ['orderItem' => $orderItemFromRepo]
             );
         }
+
+        $dispatchEvent = $this->updatePaymentAndTransaction($orderItem, 'canceled');
+
+        $this->restoreCartSession();
+
+        if ($dispatchEvent) {
+            $orderItem = $this->cart->getOrderItem();
+            $finishEvent = new CancelEvent($this->cart->getCart(), $orderItem, $this->cartPluginSettings);
+            $this->eventDispatcher->dispatch($finishEvent);
+        }
+
+        $this->addFlashMessageToCartCart('tx_cartgirosolution.controller.order.payment.action.redirect.canceled');
+
+        return $this->redirect(
+            'show',
+            'Cart\Cart',
+            'Cart'
+        );
     }
 
     public function notifyAction(): string
     {
-        $this->loadCartByArgumentHash();
+        $this->cart = $this->loadCartByArgumentHash();
 
-        if ($this->cart) {
-            $orderItem = $this->cart->getOrderItem();
-
-            if (GeneralUtility::_GET('gcResultPayment') === '4000') {
-                $dispatchEvent = $this->updatePaymentAndTransaction($orderItem, 'paid');
-
-                if ($dispatchEvent) {
-                    $orderItem = $this->cart->getOrderItem();
-                    $finishEvent = new FinishEvent($this->cart->getCart(), $orderItem, $this->cartPluginSettings);
-                    $this->eventDispatcher->dispatch($finishEvent);
-                }
-            } else {
-                $dispatchEvent = $this->updatePaymentAndTransaction($orderItem, 'canceled');
-
-                if ($dispatchEvent) {
-                    $orderItem = $this->cart->getOrderItem();
-                    $finishEvent = new CancelEvent($this->cart->getCart(), $orderItem, $this->cartPluginSettings);
-                    $this->eventDispatcher->dispatch($finishEvent);
-                }
-            }
-
-            return 'OK';
+        if (is_null($this->cart)) {
+            return 'ERROR';
         }
 
-        return 'ERROR';
+        $orderItem = $this->cart->getOrderItem();
+
+        if (GeneralUtility::_GET('gcResultPayment') === '4000') {
+            $dispatchEvent = $this->updatePaymentAndTransaction($orderItem, 'paid');
+
+            if ($dispatchEvent) {
+                $orderItem = $this->cart->getOrderItem();
+                $finishEvent = new FinishEvent($this->cart->getCart(), $orderItem, $this->cartPluginSettings);
+                $this->eventDispatcher->dispatch($finishEvent);
+            }
+        } else {
+            $dispatchEvent = $this->updatePaymentAndTransaction($orderItem, 'canceled');
+
+            if ($dispatchEvent) {
+                $orderItem = $this->cart->getOrderItem();
+                $finishEvent = new CancelEvent($this->cart->getCart(), $orderItem, $this->cartPluginSettings);
+                $this->eventDispatcher->dispatch($finishEvent);
+            }
+        }
+
+        return 'OK';
     }
 
-    protected function updatePaymentAndTransaction(Item $orderItem, string $status): bool
+    private function updatePaymentAndTransaction(Item $orderItem, string $status): bool
     {
         $dispatchEvent = false;
 
@@ -197,6 +149,10 @@ class PaymentController extends ActionController
                 break;
             }
         }
+        if (!isset($transaction) || !$transaction instanceof Transaction) {
+            throw new Exception('No transation found!', 1731616906);
+        }
+
         $transaction->setExternalStatusCode(GeneralUtility::_GET('gcResultPayment'));
         $transaction->setNote(GeneralUtility::_GET('gcBackendTxId'));
 
@@ -215,7 +171,7 @@ class PaymentController extends ActionController
         return $dispatchEvent;
     }
 
-    protected function addFlashMessageToCartCart(string $translationKey): void
+    private function addFlashMessageToCartCart(string $translationKey): void
     {
         $flashMessage = GeneralUtility::makeInstance(
             FlashMessage::class,
@@ -233,19 +189,24 @@ class PaymentController extends ActionController
         $messageQueue->enqueue($flashMessage);
     }
 
-    protected function loadCartByArgumentHash(): void
+    private function loadCartByArgumentHash(): ?Cart
     {
         if ($this->request->hasArgument('hash')) {
             $hash = $this->request->getArgument('hash');
 
             if (!empty($hash)) {
-                $querySettings = GeneralUtility::makeInstance(Typo3QuerySettings::class);
+                $querySettings = $this->cartRepository->createQuery()->getQuerySettings();
                 $querySettings->setStoragePageIds([$this->cartPluginSettings['settings']['order']['pid']]);
                 $this->cartRepository->setDefaultQuerySettings($querySettings);
 
-                $this->cart = $this->cartRepository->findOneBySHash($hash);
+                $cart = $this->cartRepository->findOneBy(['sHash' => $hash]);
+                if ($cart instanceof Cart) {
+                    return $cart;
+                }
             }
         }
+
+        return null;
     }
 
     protected function restoreCartSession(): void
@@ -253,6 +214,6 @@ class PaymentController extends ActionController
         $cart = $this->cart->getCart();
         $cart->resetOrderNumber();
         $cart->resetInvoiceNumber();
-        $this->sessionHandler->write($cart, $this->cartPluginSettings['settings']['cart']['pid']);
+        $this->sessionHandler->writeCart($this->cartPluginSettings['settings']['cart']['pid'], $cart);
     }
 }
