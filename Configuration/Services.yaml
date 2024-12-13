@@ -6,7 +6,8 @@ services:
 
   Extcode\CartGirosolution\:
     resource: '../Classes/*'
-    exclude: '../Classes/Widgets/*'
+    exclude:
+      - '../Classes/Configuration/*'
 
   Extcode\CartGirosolution\EventListener\Order\Payment\ClearCart:
     tags:

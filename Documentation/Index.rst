@@ -41,9 +41,10 @@ EXT: CartGirosolution
    **Table of Contents**
 
 .. toctree::
-   :maxdepth: 5
+   :maxdepth: 2
    :titlesonly:
 
    Introduction/Index
    Administrator/Index
+   Developer/Index
    Changelog/Index

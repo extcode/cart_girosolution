@@ -5,8 +5,9 @@ Configuration
 =============
 
 .. toctree::
-   :maxdepth: 5
+   :maxdepth: 2
    :titlesonly:
 
    Main/Index
+   Credentials/Index
    PaymentMethod/Index

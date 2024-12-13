@@ -17,6 +17,7 @@ use Extcode\Cart\Domain\Model\Order\Transaction;
 use Extcode\Cart\Domain\Repository\CartRepository;
 use Extcode\Cart\Domain\Repository\Order\PaymentRepository;
 use Extcode\Cart\Event\Order\PaymentEvent;
+use Extcode\CartGirosolution\Configuration\CredentialLoaderRegistry;
 use girosolution\GiroCheckout_SDK\GiroCheckout_SDK_Request;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManager;
 use TYPO3\CMS\Extbase\Mvc\Web\Routing\UriBuilder;
@@ -25,6 +26,8 @@ use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
 class ProviderRedirect
 {
+    private array $credentials = [];
+
     private array $conf = [];
 
     private array $cartConf = [];
@@ -36,12 +39,18 @@ class ProviderRedirect
         private readonly PersistenceManager $persistenceManager,
         private readonly UriBuilder $uriBuilder,
         private readonly CartRepository $cartRepository,
-        private readonly PaymentRepository $paymentRepository
+        private readonly PaymentRepository $paymentRepository,
+        readonly CredentialLoaderRegistry $credentialLoaderRegistry
     ) {
+        $this->credentials = $this->credentialLoaderRegistry->getCredentials();
+
         $this->conf = $this->configurationManager->getConfiguration(
             ConfigurationManager::CONFIGURATION_TYPE_FRAMEWORK,
             'CartGirosolution'
         );
+        if (isset($this->conf['credentials'])) {
+            unset($this->conf['credentials']);
+        }
 
         $this->cartConf = $this->configurationManager->getConfiguration(
             ConfigurationManager::CONFIGURATION_TYPE_FRAMEWORK,
@@ -64,19 +73,19 @@ class ProviderRedirect
         switch ($clearingType) {
             case 'CREDITCARD':
                 $request = new GiroCheckout_SDK_Request('creditCardTransaction');
-                $paymentConf = $this->conf['creditCard'];
+                $paymentConf = $this->credentials['creditCard'];
                 break;
             case 'GIROPAY':
                 $request = new GiroCheckout_SDK_Request('giropayTransaction');
-                $paymentConf = $this->conf['giropay'];
+                $paymentConf = $this->credentials['giropay'];
                 break;
             case 'PAYPAL':
                 $request = new GiroCheckout_SDK_Request('paypalTransaction');
-                $paymentConf = $this->conf['paypal'];
+                $paymentConf = $this->credentials['paypal'];
                 break;
             case 'PAYDIREKT':
                 $request = new GiroCheckout_SDK_Request('paydirektTransaction');
-                $paymentConf = $this->conf['paydirekt'];
+                $paymentConf = $this->credentials['paydirekt'];
                 break;
             default:
                 return;

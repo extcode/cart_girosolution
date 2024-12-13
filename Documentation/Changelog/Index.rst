@@ -4,7 +4,7 @@ ChangeLog
 =========
 
 .. toctree::
-   :maxdepth: 5
+   :maxdepth: 3
    :titlesonly:
 
    5.0/Index

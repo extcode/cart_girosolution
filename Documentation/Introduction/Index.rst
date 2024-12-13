@@ -10,7 +10,7 @@ Cart is a small but powerful extension which "solely" adds a shopping cart to yo
 Cart Girosolution is a payment provider and implements the Girosolution Payment service.
 
 .. toctree::
-   :maxdepth: 5
+   :maxdepth: 2
    :titlesonly:
 
    Support/Index
