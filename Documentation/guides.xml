@@ -11,8 +11,8 @@
                interlink-shortcode="extcode/cart-girosolution"
     />
     <project title="Cart Girosolution"
-             release="5.0.0"
-             version="5.0"
+             release="5.1.0"
+             version="5.1"
              copyright="2024 - 2024"
     />
     <inventory id="t3tsref" url="https://docs.typo3.org/typo3cms/TyposcriptReference/"/>
