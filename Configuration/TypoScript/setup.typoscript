@@ -10,8 +10,9 @@ cartGirosolution {
         no_cache = 1
     }
 
-    10 < tt_content.list.20.cartgirosolution_cart
-    10.features.requireCHashArgumentForActionArguments = 0
+    10 = EXTBASEPLUGIN
+    10.extensionName = CartGirosolution
+    10.pluginName = Cart
 }
 
 plugin.tx_cartgirosolution {
