@@ -19,8 +19,11 @@ use Extcode\Cart\Domain\Repository\Order\PaymentRepository;
 use Extcode\Cart\Event\Order\PaymentEvent;
 use Extcode\CartGirosolution\Configuration\CredentialLoaderRegistry;
 use girosolution\GiroCheckout_SDK\GiroCheckout_SDK_Request;
+use InvalidArgumentException;
+use TYPO3\CMS\Core\Routing\RouterInterface;
+use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManager;
-use TYPO3\CMS\Extbase\Mvc\Web\Routing\UriBuilder;
+use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
@@ -30,14 +33,18 @@ class ProviderRedirect
 
     private array $conf = [];
 
-    private array $cartConf = [];
+    private int $cartPid;
+
+    private int $orderPid;
 
     private ?OrderItem $orderItem = null;
+
+    private RouterInterface $pageRouter;
 
     public function __construct(
         private readonly ConfigurationManager $configurationManager,
         private readonly PersistenceManager $persistenceManager,
-        private readonly UriBuilder $uriBuilder,
+        private readonly SiteFinder $siteFinder,
         private readonly CartRepository $cartRepository,
         private readonly PaymentRepository $paymentRepository,
         readonly CredentialLoaderRegistry $credentialLoaderRegistry
@@ -52,10 +59,15 @@ class ProviderRedirect
             unset($this->conf['credentials']);
         }
 
-        $this->cartConf = $this->configurationManager->getConfiguration(
-            ConfigurationManager::CONFIGURATION_TYPE_FRAMEWORK,
+        $cartConf = $this->configurationManager->getConfiguration(
+            ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK,
             'Cart'
         );
+
+        $this->cartPid = (int)$cartConf['settings']['cart']['pid'];
+        $this->orderPid = (int)$cartConf['settings']['order']['pid'];
+
+        $this->pageRouter = $this->siteFinder->getSiteByPageId($this->cartPid)->getRouter();
     }
 
     public function __invoke(PaymentEvent $event): void
@@ -70,34 +82,10 @@ class ProviderRedirect
             return;
         }
 
-        switch ($clearingType) {
-            case 'CREDITCARD':
-                $request = new GiroCheckout_SDK_Request('creditCardTransaction');
-                $paymentConf = $this->credentials['creditCard'];
-                break;
-            case 'GIROPAY':
-                $request = new GiroCheckout_SDK_Request('giropayTransaction');
-                $paymentConf = $this->credentials['giropay'];
-                break;
-            case 'PAYPAL':
-                $request = new GiroCheckout_SDK_Request('paypalTransaction');
-                $paymentConf = $this->credentials['paypal'];
-                break;
-            case 'PAYDIREKT':
-                $request = new GiroCheckout_SDK_Request('paydirektTransaction');
-                $paymentConf = $this->credentials['paydirekt'];
-                break;
-            default:
-                return;
-        }
+        $request = $this->getRequest($clearingType);
+        $paymentConf = $this->getPaymentConfiguration($clearingType);
 
-        $cart = new Cart();
-        $cart->setOrderItem($this->orderItem);
-        $cart->setCart($event->getCart());
-        $cart->setPid((int)$this->cartConf['settings']['order']['pid']);
-
-        $this->cartRepository->add($cart);
-        $this->persistenceManager->persistAll();
+        $cart = $this->persistCartToDatabase($event);
 
         $request->setSecret($paymentConf['password']);
         $request->addParam('merchantId', $paymentConf['merchantId'])
@@ -172,13 +160,33 @@ class ProviderRedirect
         $event->setPropagationStopped(true);
     }
 
+    private function getRequest(string $clearingType): GiroCheckout_SDK_Request
+    {
+        return match ($clearingType) {
+            'CREDITCARD' => new GiroCheckout_SDK_Request('creditCardTransaction'),
+            'GIROPAY' => new GiroCheckout_SDK_Request('giropayTransaction'),
+            'PAYPAL' => new GiroCheckout_SDK_Request('paypalTransaction'),
+            'PAYDIREKT' => new GiroCheckout_SDK_Request('paydirektTransaction'),
+            default => throw new InvalidArgumentException('Invalid Clearint Type', 1734099627),
+        };
+    }
+
+    private function getPaymentConfiguration(string $clearingType): array
+    {
+        return match ($clearingType) {
+            'CREDITCARD' => $this->credentials['creditCard'],
+            'GIROPAY' => $this->credentials['giropay'],
+            'PAYPAL' => $this->credentials['paypal'],
+            'PAYDIREKT' => $this->credentials['paydirekt'],
+            default => throw new InvalidArgumentException('Invalid Clearint Type', 1734099627),
+        };
+    }
+
     /**
      * Builds a return URL to Cart order controller action
      */
-    protected function buildReturnUrl(string $action, string $hash): string
+    private function buildReturnUrl(string $action, string $hash): string
     {
-        $pid = (int)$this->cartConf['settings']['cart']['pid'];
-
         $arguments = [
             'tx_cartgirosolution_cart' => [
                 'controller' => 'Order\Payment',
@@ -186,15 +194,21 @@ class ProviderRedirect
                 'action' => $action,
                 'hash' => $hash,
             ],
+            'type' => (int)$this->conf['redirectTypeNum'],
         ];
 
-        $uriBuilder = $this->uriBuilder;
+        return $this->pageRouter->generateUri($this->cartPid, $arguments)->__toString();
+    }
 
-        return $uriBuilder->reset()
-            ->setTargetPageUid($pid)
-            ->setTargetPageType((int)$this->conf['redirectTypeNum'])
-            ->setCreateAbsoluteUri(true)
-            ->setArguments($arguments)
-            ->build();
+    private function persistCartToDatabase(PaymentEvent $event): Cart
+    {
+        $cart = new Cart();
+        $cart->setOrderItem($this->orderItem);
+        $cart->setCart($event->getCart());
+        $cart->setPid($this->orderPid);
+
+        $this->cartRepository->add($cart);
+        $this->persistenceManager->persistAll();
+        return $cart;
     }
 }
