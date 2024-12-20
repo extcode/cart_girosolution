@@ -11,6 +11,7 @@ namespace Extcode\CartGirosolution\Configuration;
  * LICENSE file that was distributed with this source code.
  */
 
+use TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationExtensionNotConfiguredException;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 
 final class CredentialsFromConfVars implements CredentialLoaderInterface
@@ -20,7 +21,12 @@ final class CredentialsFromConfVars implements CredentialLoaderInterface
     public function __construct(
         readonly ExtensionConfiguration $extensionConfiguration,
     ) {
-        $conf = $this->extensionConfiguration->get('cart_girosolution');
+        try {
+            $conf = $this->extensionConfiguration->get('cart_girosolution');
+        } catch (ExtensionConfigurationExtensionNotConfiguredException $exception) {
+            $this->credentials = [];
+            return;
+        }
 
         if (isset($conf['credentials']) && is_array($conf['credentials'])) {
             $this->credentials = $conf['credentials'];
