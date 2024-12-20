@@ -20,7 +20,7 @@ final class CredentialsFromConfVars implements CredentialLoaderInterface
     public function __construct(
         readonly ExtensionConfiguration $extensionConfiguration,
     ) {
-        $conf = $this->extensionConfiguration->get('cart_girosolutions');
+        $conf = $this->extensionConfiguration->get('cart_girosolution');
 
         if (isset($conf['credentials']) && is_array($conf['credentials'])) {
             $this->credentials = $conf['credentials'];
