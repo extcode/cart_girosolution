@@ -14,7 +14,7 @@ These must be adopted accordingly for the payment methods that are to be offered
 
 .. code-block:: php
 
-   $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['cart_girosolutions'] = [
+   $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['cart_girosolution'] = [
        'credentials' => [
            'creditCard' => [
                'password' => ''
@@ -47,7 +47,7 @@ These must be adopted accordingly for the payment methods that are to be offered
 .. container:: table-row
 
    Property
-      $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['cart_girosolutions'][<method>]
+      $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['cart_girosolution'][<method>]
    Data type
       array
    Description
@@ -62,7 +62,7 @@ These must be adopted accordingly for the payment methods that are to be offered
 .. container:: table-row
 
    Property
-         $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['cart_girosolutions'][<method>]['password']
+         $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['cart_girosolution'][<method>]['password']
    Data type
          string
    Description
@@ -71,7 +71,7 @@ These must be adopted accordingly for the payment methods that are to be offered
 .. container:: table-row
 
    Property
-         $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['cart_girosolutions'][<method>]['merchantId']
+         $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['cart_girosolution'][<method>]['merchantId']
    Data type
          string
    Description
@@ -80,7 +80,7 @@ These must be adopted accordingly for the payment methods that are to be offered
 .. container:: table-row
 
    Property
-         $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['cart_girosolutions'][<method>]['projectId']
+         $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['cart_girosolution'][<method>]['projectId']
    Data type
          string
    Description
