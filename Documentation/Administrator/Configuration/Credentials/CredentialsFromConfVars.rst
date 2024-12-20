@@ -17,27 +17,27 @@ These must be adopted accordingly for the payment methods that are to be offered
    $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['cart_girosolution'] = [
        'credentials' => [
            'creditCard' => [
-               'password' => ''
-               'merchantId' => ''
-               'projectId' => ''
+               'password' => '',
+               'merchantId' => '',
+               'projectId' => '',
            ],
 
            'giropay' => [
-               'password' => ''
-               'merchantId' => ''
-               'projectId' => ''
+               'password' => '',
+               'merchantId' => '',
+               'projectId' => '',
            ],
 
            'paydirekt' => [
-               'password' => ''
-               'merchantId' => ''
-               'projectId' => ''
+               'password' => '',
+               'merchantId' => '',
+               'projectId' => '',
            ],
 
            'paypal' => [
-               'password' => ''
-               'merchantId' => ''
-               'projectId' => ''
+               'password' => '',
+               'merchantId' => '',
+               'projectId' => '',
            ],
        ],
    ];

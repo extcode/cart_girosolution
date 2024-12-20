@@ -209,6 +209,7 @@ class ProviderRedirect
 
         $this->cartRepository->add($cart);
         $this->persistenceManager->persistAll();
+
         return $cart;
     }
 }
