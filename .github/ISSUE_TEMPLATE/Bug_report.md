@@ -13,8 +13,9 @@ A clear and concise description of the behavior.
 A clear and concise description of what you expected to happen.
 
 **Environment**
-- TYPO3 version(s): [e.g. 8.7.12, 9.3.0]
-- cart version: [e.g. 7.0.5]
+- TYPO3 version(s): [e.g. 13.4.2]
+- cart version: [e.g. 10.0.0]
+- cart_girosolution version: [e.g. 6.0.0]
 - Is your TYPO3 installation set up with Composer (Composer Mode): [yes, no]
 - OS: [e.g. OSX 10.13.4, Windows 10]
 

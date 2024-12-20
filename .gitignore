@@ -2,7 +2,6 @@
 composer.lock
 
 .php-cs-fixer.cache
-.phplint.cache
 Build/.phpunit.cache
 
 Documentation/_make
