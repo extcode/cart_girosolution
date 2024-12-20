@@ -4,16 +4,6 @@ cache:
     - .composer/
     - .php_cs.cache
 
-variables:
-  COMPOSER_CACHE_DIR: ".composer"
-  TYPO3_PATH_WEB: "$CI_PROJECT_DIR/.build/public"
-  MYSQL_DATABASE: "typo3"
-  MYSQL_ROOT_PASSWORD: "joh316"
-  typo3DatabaseName: "typo3"
-  typo3DatabaseHost: "mysql"
-  typo3DatabaseUsername: "root"
-  typo3DatabasePassword: "joh316"
-
 before_script:
   - apk add git --update
 
@@ -56,6 +46,11 @@ lint:php83:
   <<: *lint_php
   variables:
     CONTAINER_IMAGE: php:8.3-alpine
+
+lint:php84:
+  <<: *lint_php
+  variables:
+    CONTAINER_IMAGE: php:8.4-alpine
 
 phpstan:analyse:
   image: $CI_REGISTRY/containers/phpunit-with-php-8.2:main
