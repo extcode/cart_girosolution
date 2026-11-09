@@ -12,7 +12,6 @@ namespace Extcode\CartGirosolution\Controller\Order;
 use Exception;
 use Extcode\Cart\Domain\Model\Cart;
 use Extcode\Cart\Domain\Model\Order\Item;
-use Extcode\Cart\Domain\Model\Order\Transaction;
 use Extcode\Cart\Domain\Repository\CartRepository;
 use Extcode\Cart\Domain\Repository\Order\ItemRepository as OrderItemRepository;
 use Extcode\Cart\Domain\Repository\Order\PaymentRepository;
@@ -48,21 +47,21 @@ class PaymentController extends ActionController
         private readonly CartRepository $cartRepository,
         private readonly OrderItemRepository $orderItemRepository,
         private readonly PaymentRepository $paymentRepository,
-        readonly CredentialLoaderRegistry $credentialLoaderRegistry,
+        public readonly CredentialLoaderRegistry $credentialLoaderRegistry,
     ) {}
 
     protected function initializeAction(): void
     {
         $this->credentials = $this->credentialLoaderRegistry->getCredentials();
 
-        $this->cartPluginSettings =
-            $this->configurationManager->getConfiguration(
+        $this->cartPluginSettings
+            = $this->configurationManager->getConfiguration(
                 ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK,
                 'Cart'
             );
 
-        $this->pluginSettings =
-            $this->configurationManager->getConfiguration(
+        $this->pluginSettings
+            = $this->configurationManager->getConfiguration(
                 ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK,
                 'CartGirosolution'
             );
@@ -115,7 +114,7 @@ class PaymentController extends ActionController
         );
     }
 
-    public function notifyAction(): void
+    public function notifyAction(): ResponseInterface
     {
         $this->cart = $this->loadCartByArgumentHash();
 
@@ -144,6 +143,7 @@ class PaymentController extends ActionController
         }
 
         $notify->sendOkStatus();
+        return $this->htmlResponse();
     }
 
     private function updatePaymentAndTransaction($notify, Item $orderItem, string $status): bool
@@ -157,7 +157,7 @@ class PaymentController extends ActionController
                 break;
             }
         }
-        if (!isset($transaction) || !$transaction instanceof Transaction) {
+        if (!isset($transaction)) {
             throw new Exception('No transation found!', 1731616906);
         }
 

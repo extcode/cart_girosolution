@@ -42,16 +42,16 @@
     },
     "require": {
         "php": "^8.2",
-        "extcode/cart": "dev-main as 10.0.0",
+        "extcode/cart": "^11.0",
         "girosolution/girocheckout-sdk": "^2.6",
         "typo3/cms-core": "^13.4",
         "typo3/cms-extbase": "^13.4",
         "typo3/cms-fluid": "^13.4"
     },
     "require-dev": {
-        "friendsofphp/php-cs-fixer": "^3.16",
+        "friendsofphp/php-cs-fixer": "^3.64",
         "helmich/typo3-typoscript-lint": "^3.1",
-        "phpstan/phpstan": "^1.10",
-        "ssch/typo3-rector": "^2.6"
+        "phpstan/phpstan": "^2.1",
+        "ssch/typo3-rector": "^3.13"
     }
 }
