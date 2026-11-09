@@ -42,11 +42,11 @@
     },
     "require": {
         "php": "~8.2.0 || ~8.3.0 || ~8.4.0 || ~8.5.0",
-        "extcode/cart": "^11.0",
+        "extcode/cart": "^12.0",
         "girosolution/girocheckout-sdk": "^2.6",
-        "typo3/cms-core": "^13.4",
-        "typo3/cms-extbase": "^13.4",
-        "typo3/cms-fluid": "^13.4"
+        "typo3/cms-core": "^14.3",
+        "typo3/cms-extbase": "^14.3",
+        "typo3/cms-fluid": "^14.3"
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.64",
