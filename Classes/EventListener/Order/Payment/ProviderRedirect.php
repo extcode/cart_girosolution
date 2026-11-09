@@ -33,13 +33,13 @@ class ProviderRedirect
 
     private array $conf = [];
 
-    private int $cartPid;
+    private readonly int $cartPid;
 
-    private int $orderPid;
+    private readonly int $orderPid;
 
     private ?OrderItem $orderItem = null;
 
-    private RouterInterface $pageRouter;
+    private readonly RouterInterface $pageRouter;
 
     public function __construct(
         private readonly ConfigurationManager $configurationManager,
@@ -47,7 +47,7 @@ class ProviderRedirect
         private readonly SiteFinder $siteFinder,
         private readonly CartRepository $cartRepository,
         private readonly PaymentRepository $paymentRepository,
-        readonly CredentialLoaderRegistry $credentialLoaderRegistry
+        public readonly CredentialLoaderRegistry $credentialLoaderRegistry
     ) {
         $this->credentials = $this->credentialLoaderRegistry->getCredentials();
 
