@@ -17,8 +17,7 @@ ExtensionUtility::configurePlugin(
     ],
     [
         PaymentController::class => 'redirect, notify',
-    ],
-    ExtensionUtility::PLUGIN_TYPE_CONTENT_ELEMENT
+    ]
 );
 
 // exclude parameters from cHash

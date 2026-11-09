@@ -11,15 +11,15 @@ namespace Extcode\CartGirosolution\Tests\Unit\EventListener\Order\Payment;
  * LICENSE file that was distributed with this source code.
  */
 
+use Extcode\Cart\Configuration\Loader\PaymentMethodsLoaderInterface;
 use Extcode\Cart\Domain\Model\Cart\Cart;
+use Extcode\Cart\Domain\Model\Cart\Service;
 use Extcode\Cart\Domain\Model\Cart\ServiceInterface;
 use Extcode\Cart\Domain\Model\Order\BillingAddress;
 use Extcode\Cart\Domain\Model\Order\Item as OrderItem;
 use Extcode\Cart\Domain\Model\Order\Payment;
 use Extcode\Cart\Domain\Model\Order\ShippingAddress;
 use Extcode\Cart\Event\Order\PaymentEvent;
-use Extcode\Cart\Service\PaymentMethodsFromTypoScriptService;
-use Extcode\Cart\Service\PaymentMethodsServiceInterface;
 use Extcode\Cart\Service\SessionHandler;
 use Extcode\Cart\Utility\CartUtility;
 use Extcode\CartGirosolution\EventListener\Order\Payment\ClearCart;
@@ -34,8 +34,6 @@ final class ClearCartTest extends UnitTestCase
 {
     private const PAYMENT_ID = 2;
 
-    private const BILLING_COUNTRY = 'de';
-
     private const SETTINGS = [
         'settings' => [
             'cart' => [
@@ -46,7 +44,7 @@ final class ClearCartTest extends UnitTestCase
 
     private CartUtility&MockObject $cartUtility;
 
-    private PaymentMethodsFromTypoScriptService&MockObject $paymentMethodsService;
+    private PaymentMethodsLoaderInterface&MockObject $paymentMethodsLoader;
 
     private SessionHandler&MockObject $sessionHandler;
 
@@ -59,7 +57,7 @@ final class ClearCartTest extends UnitTestCase
         parent::setUp();
 
         $this->cartUtility = $this->createMock(CartUtility::class);
-        $this->paymentMethodsService = $this->createMock(PaymentMethodsFromTypoScriptService::class);
+        $this->paymentMethodsLoader = $this->createMock(PaymentMethodsLoaderInterface::class);
         $this->sessionHandler = $this->createMock(SessionHandler::class);
 
         $payment = self::createStub(ServiceInterface::class);
@@ -67,11 +65,10 @@ final class ClearCartTest extends UnitTestCase
 
         $this->cart = self::createStub(Cart::class);
         $this->cart->method('getPayment')->willReturn($payment);
-        $this->cart->method('getBillingCountry')->willReturn(self::BILLING_COUNTRY);
 
         $this->subject = new ClearCart(
             $this->cartUtility,
-            $this->paymentMethodsService,
+            $this->paymentMethodsLoader,
             $this->sessionHandler,
         );
     }
@@ -87,7 +84,7 @@ final class ClearCartTest extends UnitTestCase
     #[DataProvider('otherProviderDataProvider')]
     public function doesNothingForPaymentsOfOtherProviders(string $provider): void
     {
-        $this->paymentMethodsService->expects(self::never())->method('getConfigurationsForType');
+        $this->paymentMethodsLoader->expects(self::never())->method('getPaymentMethods');
         $this->cartUtility->expects(self::never())->method('getNewCart');
         $this->sessionHandler->expects(self::never())->method('writeCart');
         $this->sessionHandler->expects(self::never())->method('writeAddress');
@@ -96,33 +93,15 @@ final class ClearCartTest extends UnitTestCase
     }
 
     #[Test]
-    public function doesNothingIfThePaymentMethodsServiceProvidesNoConfiguration(): void
-    {
-        $this->cartUtility->expects(self::never())->method('getNewCart');
-        $this->sessionHandler->expects(self::never())->method('writeCart');
-        $this->sessionHandler->expects(self::never())->method('writeAddress');
-
-        $subject = new ClearCart(
-            $this->cartUtility,
-            self::createStub(PaymentMethodsServiceInterface::class),
-            $this->sessionHandler,
-        );
-
-        $subject($this->createEvent('GIROSOLUTION_CREDITCARD'));
-    }
-
-    #[Test]
     public function doesNotClearTheCartIfPreventClearCartIsSet(): void
     {
-        $this->paymentMethodsService
-            ->method('getConfigurationsForType')
-            ->willReturn([
-                'options' => [
-                    self::PAYMENT_ID => [
-                        'preventClearCart' => '1',
-                    ],
+        $this->paymentMethodsLoader
+            ->method('getPaymentMethods')
+            ->willReturn($this->createPaymentMethods([
+                self::PAYMENT_ID => [
+                    'preventClearCart' => '1',
                 ],
-            ]);
+            ]));
 
         $this->cartUtility->expects(self::never())->method('getNewCart');
         $this->sessionHandler->expects(self::never())->method('writeCart');
@@ -131,24 +110,26 @@ final class ClearCartTest extends UnitTestCase
         ($this->subject)($this->createEvent('GIROSOLUTION_CREDITCARD'));
     }
 
-    public static function paymentConfigurationWithoutPreventClearCartDataProvider(): \Generator
+    public static function paymentMethodsWithoutPreventClearCartDataProvider(): \Generator
     {
-        yield 'no payment configuration' => [null];
-        yield 'no options' => [['options' => []]];
-        yield 'preventClearCart not set' => [['options' => [self::PAYMENT_ID => []]]];
-        yield 'preventClearCart disabled' => [['options' => [self::PAYMENT_ID => ['preventClearCart' => '0']]]];
-        yield 'preventClearCart set for another payment' => [['options' => [self::PAYMENT_ID + 1 => ['preventClearCart' => '1']]]];
+        yield 'no payment methods' => [[]];
+        yield 'preventClearCart not set' => [[self::PAYMENT_ID => []]];
+        yield 'preventClearCart disabled' => [[self::PAYMENT_ID => ['preventClearCart' => '0']]];
+        yield 'preventClearCart set for another payment' => [[self::PAYMENT_ID + 1 => ['preventClearCart' => '1']]];
     }
 
+    /**
+     * @param array<int, array> $paymentMethodConfigurations
+     */
     #[Test]
-    #[DataProvider('paymentConfigurationWithoutPreventClearCartDataProvider')]
-    public function clearsCartAndAddressesForGirosolutionPayments(?array $paymentConfiguration): void
+    #[DataProvider('paymentMethodsWithoutPreventClearCartDataProvider')]
+    public function clearsCartAndAddressesForGirosolutionPayments(array $paymentMethodConfigurations): void
     {
-        $this->paymentMethodsService
+        $this->paymentMethodsLoader
             ->expects(self::once())
-            ->method('getConfigurationsForType')
-            ->with('payments', self::BILLING_COUNTRY)
-            ->willReturn($paymentConfiguration);
+            ->method('getPaymentMethods')
+            ->with($this->cart)
+            ->willReturn($this->createPaymentMethods($paymentMethodConfigurations));
 
         $newCart = self::createStub(Cart::class);
         $this->cartUtility
@@ -189,6 +170,23 @@ final class ClearCartTest extends UnitTestCase
         ($this->subject)($event);
 
         self::assertFalse($event->isPropagationStopped());
+    }
+
+    /**
+     * Creates the payment methods like PaymentMethodsLoaderInterface returns
+     * them: services indexed by their id.
+     *
+     * @param array<int, array> $configurations
+     * @return array<int, Service>
+     */
+    private function createPaymentMethods(array $configurations): array
+    {
+        $paymentMethods = [];
+        foreach ($configurations as $id => $configuration) {
+            $paymentMethods[$id] = new Service($id, $configuration);
+        }
+
+        return $paymentMethods;
     }
 
     private function createEvent(string $provider): PaymentEvent
