@@ -4,7 +4,7 @@
 6.0 Changes
 ===========
 
-The version 6.x is a release for extcode/cart 10.x.
+The version 6.x is a release for extcode/cart 11.x.
 
 **Table of contents**
 
