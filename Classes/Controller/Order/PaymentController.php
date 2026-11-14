@@ -143,7 +143,7 @@ class PaymentController extends ActionController
         }
 
         $notify->sendOkStatus();
-        return $this->htmlResponse();
+        return $this->htmlResponse('');
     }
 
     private function updatePaymentAndTransaction($notify, Item $orderItem, string $status): bool
