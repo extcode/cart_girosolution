@@ -39,9 +39,9 @@ class ClearCart
 
             $paymentId = $cart->getPayment()->getId();
 
-            $paymentSettings = $this->paymentMethodsLoader->getPaymentMethods($cart);
+            $paymentMethod = $this->paymentMethodsLoader->getPaymentMethods($cart)[$paymentId] ?? null;
 
-            if ((int)($paymentSettings['options'][$paymentId]['preventClearCart'] ?? 0) != 1) {
+            if ((int)($paymentMethod?->getConfig()['preventClearCart'] ?? 0) !== 1) {
                 $cartPid = $settings['settings']['cart']['pid'];
 
                 $this->sessionHandler->writeCart(
