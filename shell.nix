@@ -64,6 +64,18 @@ let
     '';
   };
 
+  projectLintTypoScript = pkgs.writeShellApplication {
+    name = "project-lint-typoscript";
+
+    runtimeInputs = [
+      php
+    ];
+
+    text = ''
+      "$PROJECT_ROOT/Build/Scripts/lint-typoscript.sh"
+    '';
+  };
+
   projectLintXml = pkgs.writeShellApplication {
     name = "project-lint-xml";
 
@@ -93,12 +105,14 @@ let
 
     runtimeInputs = [
       projectLintPhp
+      projectLintTypoScript
       projectLintXml
       projectLintYaml
     ];
 
     text = ''
       project-lint-php
+      project-lint-typoscript
       project-lint-xml
       project-lint-yaml
     '';
@@ -129,6 +143,7 @@ in pkgs.mkShellNoCC {
     projectCglFix
     projectLint
     projectLintPhp
+    projectLintTypoScript
     projectLintXml
     projectLintYaml
     projectPhpstan
