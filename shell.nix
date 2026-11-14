@@ -130,6 +130,26 @@ let
     '';
   };
 
+  projectTestUnit = pkgs.writeShellApplication {
+    name = "project-test-unit";
+    runtimeInputs = [
+      php
+    ];
+    text = ''
+      "$PROJECT_ROOT/Build/Scripts/phpunit.sh" unit
+    '';
+  };
+
+  projectTestFunctional = pkgs.writeShellApplication {
+    name = "project-test-functional";
+    runtimeInputs = [
+      php
+    ];
+    text = ''
+      "$PROJECT_ROOT/Build/Scripts/phpunit.sh" functional
+    '';
+  };
+
 in pkgs.mkShellNoCC {
   name = "TYPO3 Extension extcode/cart-girosolution";
   buildInputs = [
@@ -147,6 +167,8 @@ in pkgs.mkShellNoCC {
     projectLintXml
     projectLintYaml
     projectPhpstan
+    projectTestUnit
+    projectTestFunctional
   ];
 
   shellHook = ''
