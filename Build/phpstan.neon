@@ -5,5 +5,5 @@ parameters:
   paths:
     - ../Classes
     - ../Configuration
-    - ../ext_emconf.php
+    - ../Tests
     - ../ext_localconf.php
