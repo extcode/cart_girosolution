@@ -36,7 +36,7 @@ let
     ];
 
     text = ''
-      ./.Build/bin/php-cs-fixer fix --config=Build/.php-cs-fixer.dist.php -v --dry-run --diff
+      "$PROJECT_ROOT/Build/Scripts/cgl.sh"
     '';
   };
 
@@ -48,7 +48,19 @@ let
     ];
 
     text = ''
-      ./.Build/bin/php-cs-fixer fix --config=Build/.php-cs-fixer.dist.php
+      "$PROJECT_ROOT/Build/Scripts/cgl.sh" --fix
+    '';
+  };
+
+  projectLintPhp = pkgs.writeShellApplication {
+    name = "project-lint-php";
+
+    runtimeInputs = [
+      php
+    ];
+
+    text = ''
+      "$PROJECT_ROOT/Build/Scripts/lint-php.sh"
     '';
   };
 
@@ -56,11 +68,11 @@ let
     name = "project-lint";
 
     runtimeInputs = [
-      php
+      projectLintPhp
     ];
 
     text = ''
-      find ./*.php Classes Configuration Tests -name '*.php' -print0 | xargs -0 -n 1 -P 4 php -l
+      project-lint-php
     '';
   };
 
@@ -72,25 +84,25 @@ let
     ];
 
     text = ''
-      ./.Build/bin/phpstan analyse -c Build/phpstan.neon --memory-limit 256M
+      "$PROJECT_ROOT/Build/Scripts/phpstan.sh"
     '';
   };
 
 in pkgs.mkShellNoCC {
-  name = "TYPO3 Extension extcode/cart-products";
+  name = "TYPO3 Extension extcode/cart-girosolution";
   buildInputs = [
+    pkgs.cacert
     php
     composer
     projectInstall
     projectCgl
     projectCglFix
     projectLint
+    projectLintPhp
     projectPhpstan
   ];
 
   shellHook = ''
     export PROJECT_ROOT="$(pwd)"
-
-    export typo3DatabaseDriver=pdo_sqlite
   '';
 }

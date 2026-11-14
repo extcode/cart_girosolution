@@ -56,5 +56,14 @@
         "helmich/typo3-typoscript-lint": "^3.1",
         "phpstan/phpstan": "^2.1",
         "ssch/typo3-rector": "^3.13"
+    },
+    "scripts": {
+        "project:cgl": "Build/Scripts/cgl.sh",
+        "project:cgl:fix": "Build/Scripts/cgl.sh --fix",
+        "project:lint": [
+            "@project:lint:php"
+        ],
+        "project:lint:php": "Build/Scripts/lint-php.sh",
+        "project:phpstan": "Build/Scripts/phpstan.sh"
     }
 }
