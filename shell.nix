@@ -150,6 +150,16 @@ let
     '';
   };
 
+  projectTestCoverage = pkgs.writeShellApplication {
+    name = "project-test-coverage";
+    runtimeInputs = [
+      php
+    ];
+    text = ''
+      "$PROJECT_ROOT/Build/Scripts/coverage.sh" "$@"
+    '';
+  };
+
 in pkgs.mkShellNoCC {
   name = "TYPO3 Extension extcode/cart-girosolution";
   buildInputs = [
@@ -169,6 +179,7 @@ in pkgs.mkShellNoCC {
     projectPhpstan
     projectTestUnit
     projectTestFunctional
+    projectTestCoverage
   ];
 
   shellHook = ''
