@@ -1,0 +1,16 @@
+{
+    "name": "extcode/girosolution-test",
+    "type": "typo3-cms-extension",
+    "description": "Records the events of cart_girosolution in functional tests",
+    "license": [
+        "GPL-2.0-or-later"
+    ],
+    "require": {
+        "extcode/cart-girosolution": "*"
+    },
+    "extra": {
+        "typo3/cms": {
+            "extension-key": "girosolution_test"
+        }
+    }
+}
