@@ -58,7 +58,7 @@ final class EventListenerRegistrationTest extends FunctionalTestCase
 
         self::assertArrayHasKey('cart-girosolution--order--finish--email', $listeners);
         self::assertSame(
-            'Extcode\\CartGirosolution\\EventListener\\Order\\Finish\\Email',
+            'cart-girosolution--event-listener--order--finish--email',
             $listeners['cart-girosolution--order--finish--email']['service']
         );
     }

@@ -46,7 +46,7 @@ return static function (ContainerConfigurator $containerConfigurator, ContainerB
             'event' => PaymentEvent::class,
         ]);
 
-    $services->set('Extcode\\CartGirosolution\\EventListener\\Order\\Finish\\Email', Email::class)
+    $services->set('cart-girosolution--event-listener--order--finish--email', Email::class)
         ->tag('event.listener', [
             'identifier' => 'cart-girosolution--order--finish--email',
             'event' => FinishEvent::class,
