@@ -30,7 +30,7 @@ jobs:
           tools: composer:v2
 
       - name: PHP lint
-        run: "find *.php Classes Configuration Tests -name '*.php' -print0 | xargs -0 -n 1 -P 4 php -l"
+        run: Build/Scripts/lint-php.sh
 
   documentation-rendering:
     runs-on: ubuntu-latest
@@ -61,7 +61,7 @@ jobs:
         run: composer install --prefer-dist --no-progress --no-suggest
 
       - name: Coding Guideline
-        run: .Build/bin/php-cs-fixer fix --config=Build/.php-cs-fixer.dist.php -v --dry-run --using-cache=no --path-mode=intersection ./
+        run: Build/Scripts/cgl.sh
 
   code-quality:
     runs-on: ubuntu-latest
@@ -92,4 +92,4 @@ jobs:
           composer require --no-interaction --prefer-dist --no-progress "typo3/cms-core:${{ matrix.typo3-version }}" "typo3/cms-extbase:${{ matrix.typo3-version }}" "typo3/cms-frontend:${{ matrix.typo3-version }}"
 
       - name: Code Quality (by PHPStan)
-        run: .Build/bin/phpstan analyse -c Build/phpstan.neon
+        run: Build/Scripts/phpstan.sh
