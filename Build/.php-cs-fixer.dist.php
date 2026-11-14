@@ -21,6 +21,7 @@ return (new \PhpCsFixer\Config())
         'concat_space' => ['spacing' => 'one'],
         'declare_equal_normalize' => ['space' => 'none'],
         'declare_parentheses' => true,
+        'declare_strict_types' => true,
         'dir_constant' => true,
         'function_to_constant' => ['functions' => ['get_called_class', 'get_class', 'get_class_this', 'php_sapi_name', 'phpversion', 'pi']],
         'modernize_strpos' => true,
