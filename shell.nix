@@ -23,7 +23,7 @@ let
       composer
     ];
     text = ''
-      rm -rf .Build/ vendor/ composer.lock
+      rm -rf .Build/ composer.lock
       composer update --prefer-dist --no-progress --working-dir="$PROJECT_ROOT"
     '';
   };
@@ -36,7 +36,7 @@ let
     ];
 
     text = ''
-      ./vendor/bin/php-cs-fixer fix --config=Build/.php-cs-fixer.dist.php -v --dry-run --diff
+      "$PROJECT_ROOT/Build/Scripts/cgl.sh"
     '';
   };
 
@@ -48,7 +48,55 @@ let
     ];
 
     text = ''
-      ./vendor/bin/php-cs-fixer fix --config=Build/.php-cs-fixer.dist.php
+      "$PROJECT_ROOT/Build/Scripts/cgl.sh" --fix
+    '';
+  };
+
+  projectLintPhp = pkgs.writeShellApplication {
+    name = "project-lint-php";
+
+    runtimeInputs = [
+      php
+    ];
+
+    text = ''
+      "$PROJECT_ROOT/Build/Scripts/lint-php.sh"
+    '';
+  };
+
+  projectLintTypoScript = pkgs.writeShellApplication {
+    name = "project-lint-typoscript";
+
+    runtimeInputs = [
+      php
+    ];
+
+    text = ''
+      "$PROJECT_ROOT/Build/Scripts/lint-typoscript.sh"
+    '';
+  };
+
+  projectLintXml = pkgs.writeShellApplication {
+    name = "project-lint-xml";
+
+    runtimeInputs = [
+      pkgs.libxml2
+    ];
+
+    text = ''
+      "$PROJECT_ROOT/Build/Scripts/lint-xml.sh"
+    '';
+  };
+
+  projectLintYaml = pkgs.writeShellApplication {
+    name = "project-lint-yaml";
+
+    runtimeInputs = [
+      pkgs.yamllint
+    ];
+
+    text = ''
+      "$PROJECT_ROOT/Build/Scripts/lint-yaml.sh"
     '';
   };
 
@@ -56,11 +104,17 @@ let
     name = "project-lint";
 
     runtimeInputs = [
-      php
+      projectLintPhp
+      projectLintTypoScript
+      projectLintXml
+      projectLintYaml
     ];
 
     text = ''
-      find ./*.php Classes Configuration Tests -name '*.php' -print0 | xargs -0 -n 1 -P 4 php -l
+      project-lint-php
+      project-lint-typoscript
+      project-lint-xml
+      project-lint-yaml
     '';
   };
 
@@ -72,25 +126,30 @@ let
     ];
 
     text = ''
-      ./vendor/bin/phpstan analyse -c Build/phpstan.neon --memory-limit 256M
+      "$PROJECT_ROOT/Build/Scripts/phpstan.sh"
     '';
   };
 
 in pkgs.mkShellNoCC {
-  name = "TYPO3 Extension extcode/cart-products";
+  name = "TYPO3 Extension extcode/cart-girosolution";
   buildInputs = [
+    pkgs.cacert
+    pkgs.libxml2
+    pkgs.yamllint
     php
     composer
     projectInstall
     projectCgl
     projectCglFix
     projectLint
+    projectLintPhp
+    projectLintTypoScript
+    projectLintXml
+    projectLintYaml
     projectPhpstan
   ];
 
   shellHook = ''
     export PROJECT_ROOT="$(pwd)"
-
-    export typo3DatabaseDriver=pdo_sqlite
   '';
 }

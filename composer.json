@@ -4,7 +4,7 @@
     "description": "Shopping Cart(s) for TYPO3 - Girosolution Payment Provider",
     "homepage": "https://cart.extco.de",
     "license": [
-        "GPL-2.0+"
+        "GPL-2.0-or-later"
     ],
     "keywords": [
         "TYPO3 CMS",
@@ -29,15 +29,18 @@
         }
     },
     "config": {
+        "bin-dir": ".Build/bin",
+        "vendor-dir": ".Build/vendor",
         "allow-plugins": {
             "typo3/cms-composer-installers": true,
             "typo3/class-alias-loader": true
-        }
+        },
+        "lock": false
     },
     "extra": {
         "typo3/cms": {
             "extension-key": "cart_girosolution",
-            "web-dir": ".build/public"
+            "web-dir": ".Build/public"
         }
     },
     "require": {
@@ -53,5 +56,20 @@
         "helmich/typo3-typoscript-lint": "^3.1",
         "phpstan/phpstan": "^2.1",
         "ssch/typo3-rector": "^3.13"
+    },
+    "scripts": {
+        "project:cgl": "Build/Scripts/cgl.sh",
+        "project:cgl:fix": "Build/Scripts/cgl.sh --fix",
+        "project:lint": [
+            "@project:lint:php",
+            "@project:lint:typoscript",
+            "@project:lint:xml",
+            "@project:lint:yaml"
+        ],
+        "project:lint:php": "Build/Scripts/lint-php.sh",
+        "project:lint:typoscript": "Build/Scripts/lint-typoscript.sh",
+        "project:lint:xml": "Build/Scripts/lint-xml.sh",
+        "project:lint:yaml": "Build/Scripts/lint-yaml.sh",
+        "project:phpstan": "Build/Scripts/phpstan.sh"
     }
 }
