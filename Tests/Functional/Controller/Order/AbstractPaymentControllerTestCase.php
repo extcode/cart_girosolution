@@ -71,6 +71,7 @@ abstract class AbstractPaymentControllerTestCase extends FunctionalTestCase
 
         $cart = new Cart([]);
         $cart->setBillingCountry('de');
+        $cart->setOrderNumber('ORD-2026-0001');
 
         $this->get(ConnectionPool::class)
             ->getConnectionForTable('tx_cart_domain_model_cart')
@@ -85,10 +86,38 @@ abstract class AbstractPaymentControllerTestCase extends FunctionalTestCase
         EventRecorder::reset();
     }
 
+    /**
+     * Sends the notification, Girosolution calls the notify URL in the
+     * background after the payment.
+     */
     protected function sendNotification(
         string $resultPayment,
         string $secret,
-        string $cartHash = self::CART_HASH,
+        ?string $cartHash = self::CART_HASH,
+    ): ResponseInterface {
+        return $this->callPaymentController('notify', $resultPayment, $secret, $cartHash);
+    }
+
+    /**
+     * Sends the redirect, Girosolution redirects the customer to the redirect
+     * URL after the payment.
+     */
+    protected function sendRedirect(
+        string $resultPayment,
+        string $secret,
+        ?string $cartHash = self::CART_HASH,
+    ): ResponseInterface {
+        return $this->callPaymentController('redirect', $resultPayment, $secret, $cartHash);
+    }
+
+    /**
+     * @param string|null $cartHash null omits the hash argument
+     */
+    private function callPaymentController(
+        string $action,
+        string $resultPayment,
+        string $secret,
+        ?string $cartHash,
     ): ResponseInterface {
         $notification = [
             'gcReference' => self::GC_REFERENCE,
@@ -103,16 +132,26 @@ abstract class AbstractPaymentControllerTestCase extends FunctionalTestCase
         // The controller reads the notification from $_GET, like the SDK of Girosolution expects it.
         $_GET = $notification;
 
+        $pluginArguments = [
+            'tx_cartgirosolution_cart[controller]' => 'Order\\Payment',
+            'tx_cartgirosolution_cart[action]' => $action,
+        ];
+        if ($cartHash !== null) {
+            $pluginArguments['tx_cartgirosolution_cart[hash]'] = $cartHash;
+        }
+
         return $this->executeFrontendSubRequest(
             (new InternalRequest('http://localhost/'))
                 ->withPageId(1)
-                ->withQueryParameters([
-                    'type' => 2278106,
-                    'tx_cartgirosolution_cart[controller]' => 'Order\\Payment',
-                    'tx_cartgirosolution_cart[action]' => 'notify',
-                    'tx_cartgirosolution_cart[hash]' => $cartHash,
-                ] + $notification)
+                ->withQueryParameters(['type' => 2278106] + $pluginArguments + $notification)
         );
+    }
+
+    protected function setPaymentProvider(string $provider): void
+    {
+        $this->get(ConnectionPool::class)
+            ->getConnectionForTable('tx_cart_domain_model_order_payment')
+            ->update('tx_cart_domain_model_order_payment', ['provider' => $provider], ['uid' => 1]);
     }
 
     protected function getPayment(): array
