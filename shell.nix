@@ -64,15 +64,29 @@ let
     '';
   };
 
+  projectLintYaml = pkgs.writeShellApplication {
+    name = "project-lint-yaml";
+
+    runtimeInputs = [
+      pkgs.yamllint
+    ];
+
+    text = ''
+      "$PROJECT_ROOT/Build/Scripts/lint-yaml.sh"
+    '';
+  };
+
   projectLint = pkgs.writeShellApplication {
     name = "project-lint";
 
     runtimeInputs = [
       projectLintPhp
+      projectLintYaml
     ];
 
     text = ''
       project-lint-php
+      project-lint-yaml
     '';
   };
 
@@ -92,6 +106,7 @@ in pkgs.mkShellNoCC {
   name = "TYPO3 Extension extcode/cart-girosolution";
   buildInputs = [
     pkgs.cacert
+    pkgs.yamllint
     php
     composer
     projectInstall
@@ -99,6 +114,7 @@ in pkgs.mkShellNoCC {
     projectCglFix
     projectLint
     projectLintPhp
+    projectLintYaml
     projectPhpstan
   ];
 
