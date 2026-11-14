@@ -13,5 +13,6 @@ Cart Girosolution is a payment provider and implements the Girosolution Payment 
    :maxdepth: 2
    :titlesonly:
 
+   SupportedVersions/Index
    Support/Index
    Sponsoring/Index
