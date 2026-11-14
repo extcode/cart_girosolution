@@ -19,20 +19,33 @@ use Extcode\GirosolutionTest\EventListener\EventRecorder;
 use girosolution\GiroCheckout_SDK\helper\GiroCheckout_SDK_Exception_helper;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
+use Psr\Http\Message\ResponseInterface;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 
 /**
  * Girosolution redirects the customer to the redirectAction after the
  * payment. The customer is forwarded to the order, or back to the cart if
  * the payment has been canceled.
- *
- * TYPO3 v13 sends the redirect of an Extbase plugin via header() instead of
- * the response, so the target of the redirect is not visible in functional
- * tests and not checked here.
  */
 #[CoversClass(PaymentController::class)]
 final class PaymentControllerRedirectActionTest extends AbstractPaymentControllerTestCase
 {
+    #[Test]
+    public function successfulPaymentRedirectsToTheOrder(): void
+    {
+        $response = $this->sendRedirect(self::RESULT_PAYMENT_SUCCESSFUL, self::TYPOSCRIPT_SECRET);
+
+        self::assertSame(303, $response->getStatusCode());
+        self::assertSame(
+            [
+                'action' => 'show',
+                'controller' => 'Cart\\Order',
+                'orderItem' => '1',
+            ],
+            $this->getCartPluginArgumentsOfRedirect($response)
+        );
+    }
+
     #[Test]
     public function successfulPaymentMarksPaymentAndTransactionAsPaid(): void
     {
@@ -74,10 +87,26 @@ final class PaymentControllerRedirectActionTest extends AbstractPaymentControlle
     public function redirectAfterNotificationDoesNotDispatchTheEventAgain(): void
     {
         $this->sendNotification(self::RESULT_PAYMENT_SUCCESSFUL, self::TYPOSCRIPT_SECRET);
-        $this->sendRedirect(self::RESULT_PAYMENT_SUCCESSFUL, self::TYPOSCRIPT_SECRET);
+        $response = $this->sendRedirect(self::RESULT_PAYMENT_SUCCESSFUL, self::TYPOSCRIPT_SECRET);
 
+        self::assertSame(303, $response->getStatusCode());
         self::assertSame('paid', $this->getPayment()['status']);
         self::assertCount(1, EventRecorder::getEvents()[FinishEvent::class] ?? []);
+    }
+
+    #[Test]
+    public function canceledPaymentRedirectsToTheCart(): void
+    {
+        $response = $this->sendRedirect(self::RESULT_PAYMENT_CANCELED, self::TYPOSCRIPT_SECRET);
+
+        self::assertSame(303, $response->getStatusCode());
+        self::assertSame(
+            [
+                'action' => 'show',
+                'controller' => 'Cart\\Cart',
+            ],
+            $this->getCartPluginArgumentsOfRedirect($response)
+        );
     }
 
     #[Test]
@@ -158,6 +187,18 @@ final class PaymentControllerRedirectActionTest extends AbstractPaymentControlle
         }
 
         self::assertSame('open', $this->getPayment()['status']);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function getCartPluginArgumentsOfRedirect(ResponseInterface $response): array
+    {
+        parse_str((string)parse_url($response->getHeaderLine('location'), PHP_URL_QUERY), $query);
+
+        self::assertIsArray($query['tx_cart_cart'] ?? null);
+
+        return $query['tx_cart_cart'];
     }
 
     /**
