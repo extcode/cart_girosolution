@@ -23,7 +23,7 @@ let
       composer
     ];
     text = ''
-      rm -rf .Build/ vendor/ composer.lock
+      rm -rf .Build/ composer.lock
       composer update --prefer-dist --no-progress --working-dir="$PROJECT_ROOT"
     '';
   };
@@ -36,7 +36,7 @@ let
     ];
 
     text = ''
-      ./vendor/bin/php-cs-fixer fix --config=Build/.php-cs-fixer.dist.php -v --dry-run --diff
+      ./.Build/bin/php-cs-fixer fix --config=Build/.php-cs-fixer.dist.php -v --dry-run --diff
     '';
   };
 
@@ -48,7 +48,7 @@ let
     ];
 
     text = ''
-      ./vendor/bin/php-cs-fixer fix --config=Build/.php-cs-fixer.dist.php
+      ./.Build/bin/php-cs-fixer fix --config=Build/.php-cs-fixer.dist.php
     '';
   };
 
@@ -72,7 +72,7 @@ let
     ];
 
     text = ''
-      ./vendor/bin/phpstan analyse -c Build/phpstan.neon --memory-limit 256M
+      ./.Build/bin/phpstan analyse -c Build/phpstan.neon --memory-limit 256M
     '';
   };
 

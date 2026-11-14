@@ -29,15 +29,18 @@
         }
     },
     "config": {
+        "bin-dir": ".Build/bin",
+        "vendor-dir": ".Build/vendor",
         "allow-plugins": {
             "typo3/cms-composer-installers": true,
             "typo3/class-alias-loader": true
-        }
+        },
+        "lock": false
     },
     "extra": {
         "typo3/cms": {
             "extension-key": "cart_girosolution",
-            "web-dir": ".build/public"
+            "web-dir": ".Build/public"
         }
     },
     "require": {
