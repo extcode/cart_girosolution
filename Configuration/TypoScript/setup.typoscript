@@ -11,8 +11,10 @@ cartGirosolution {
     }
 
     10 = EXTBASEPLUGIN
-    10.extensionName = CartGirosolution
-    10.pluginName = Cart
+    10 {
+        extensionName = CartGirosolution
+        pluginName = Cart
+    }
 }
 
 plugin.tx_cartgirosolution {
