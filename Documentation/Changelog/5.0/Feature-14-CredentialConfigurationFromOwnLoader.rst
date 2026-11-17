@@ -9,4 +9,4 @@ Description
 
 It is possible to configure the configuration from your own loader.
 
-For more informations go to :ref:`Credentials from own CredentialLoader <credentials-from-own-credentialloader>`
+For more information go to :ref:`Credentials from own CredentialLoader <credentials-from-own-credentialloader>`
