@@ -160,7 +160,7 @@ class PaymentController extends ActionController
             }
         }
         if (!isset($transaction)) {
-            throw new Exception('No transation found!', 1731616906);
+            throw new Exception('No transaction found!', 1731616906);
         }
 
         $transaction->setExternalStatusCode($notify->getResponseParam('gcResultPayment'));
