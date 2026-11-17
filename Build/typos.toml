@@ -1,0 +1,13 @@
+[files]
+extend-exclude = [
+    # Vendored schemas, kept as published.
+    "Build/xliff-core-1.2-strict.xsd",
+    "Build/xml.xsd",
+]
+
+[default.extend-identifiers]
+# Translation key, renaming it would drop existing translations.
+error_occured = "error_occured"
+# GiroCheckout API parameters.
+shippingAddresseFirstName = "shippingAddresseFirstName"
+shippingAddresseLastName = "shippingAddresseLastName"
