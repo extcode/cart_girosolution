@@ -17,6 +17,7 @@ use Extcode\Cart\Domain\Model\Order\Item;
 use Extcode\Cart\Domain\Repository\CartRepository;
 use Extcode\Cart\Domain\Repository\Order\ItemRepository as OrderItemRepository;
 use Extcode\Cart\Domain\Repository\Order\PaymentRepository;
+use Extcode\Cart\OrderStatus\PaymentStatus;
 use Extcode\Cart\Service\SessionHandler;
 use Extcode\CartGirosolution\Configuration\CredentialLoaderRegistry;
 use Extcode\CartGirosolution\Event\Order\CancelEvent;
@@ -80,7 +81,7 @@ class PaymentController extends ActionController
         $notify = $this->getParsedNotify($clearingType);
 
         if ($notify->paymentSuccessful()) {
-            $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, 'paid');
+            $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, PaymentStatus::PAID);
 
             if ($dispatchEvent) {
                 $finishEvent = new FinishEvent($this->cart->getCart(), $orderItem, $this->cartPluginSettings);
@@ -97,7 +98,7 @@ class PaymentController extends ActionController
             );
         }
 
-        $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, 'canceled');
+        $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, PaymentStatus::CANCELED);
 
         $this->restoreCartSession();
 
@@ -127,7 +128,7 @@ class PaymentController extends ActionController
         $notify = $this->getParsedNotify($clearingType);
 
         if ($notify->paymentSuccessful()) {
-            $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, 'paid');
+            $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, PaymentStatus::PAID);
 
             if ($dispatchEvent) {
                 $orderItem = $this->cart->getOrderItem();
@@ -135,7 +136,7 @@ class PaymentController extends ActionController
                 $this->eventDispatcher->dispatch($finishEvent);
             }
         } else {
-            $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, 'canceled');
+            $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, PaymentStatus::CANCELED);
 
             if ($dispatchEvent) {
                 $orderItem = $this->cart->getOrderItem();
