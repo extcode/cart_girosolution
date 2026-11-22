@@ -154,12 +154,14 @@ class PaymentController extends ActionController
 
         $payment = $orderItem->getPayment();
 
-        foreach ($payment->getTransactions() as $transaction) {
-            if ($transaction->getTxnId() === ($notify->getResponseParam('gcReference'))) {
+        $transaction = null;
+        foreach ($payment->getTransactions() as $paymentTransaction) {
+            if ($paymentTransaction->getTxnId() === $notify->getResponseParam('gcReference')) {
+                $transaction = $paymentTransaction;
                 break;
             }
         }
-        if (!isset($transaction)) {
+        if ($transaction === null) {
             throw new Exception('No transaction found!', 1731616906);
         }
 
