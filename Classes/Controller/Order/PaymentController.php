@@ -14,6 +14,7 @@ namespace Extcode\CartGirosolution\Controller\Order;
 use Exception;
 use Extcode\Cart\Domain\Model\Cart;
 use Extcode\Cart\Domain\Model\Order\Item;
+use Extcode\Cart\Domain\Model\Order\Payment;
 use Extcode\Cart\Domain\Repository\CartRepository;
 use Extcode\Cart\Domain\Repository\Order\ItemRepository as OrderItemRepository;
 use Extcode\Cart\Domain\Repository\Order\PaymentRepository;
@@ -24,6 +25,9 @@ use Extcode\CartGirosolution\Event\Order\FinishEvent;
 use girosolution\GiroCheckout_SDK\GiroCheckout_SDK_Notify;
 use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Core\Database\Connection;
+use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
 use TYPO3\CMS\Core\Messaging\FlashMessageService;
 use TYPO3\CMS\Core\Type\ContextualFeedbackSeverity;
@@ -35,6 +39,8 @@ use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
 class PaymentController extends ActionController
 {
+    private const PAYMENT_TABLE = 'tx_cart_domain_model_order_payment';
+
     protected ?Cart $cart = null;
 
     protected array $cartPluginSettings;
@@ -50,6 +56,8 @@ class PaymentController extends ActionController
         private readonly OrderItemRepository $orderItemRepository,
         private readonly PaymentRepository $paymentRepository,
         public readonly CredentialLoaderRegistry $credentialLoaderRegistry,
+        private readonly ConnectionPool $connectionPool,
+        private readonly LoggerInterface $logger,
     ) {}
 
     protected function initializeAction(): void
@@ -148,10 +156,14 @@ class PaymentController extends ActionController
         return $this->htmlResponse('');
     }
 
-    private function updatePaymentAndTransaction($notify, Item $orderItem, string $status): bool
+    /**
+     * Returns true if this request has changed the status of the payment.
+     * Only this request may dispatch the events, otherwise the redirect of the
+     * customer and the notification, which arrive at about the same time,
+     * both send the emails of the order.
+     */
+    private function updatePaymentAndTransaction(GiroCheckout_SDK_Notify $notify, Item $orderItem, string $status): bool
     {
-        $dispatchEvent = false;
-
         $payment = $orderItem->getPayment();
 
         $transaction = null;
@@ -172,15 +184,73 @@ class PaymentController extends ActionController
             $transaction->setStatus($status);
         }
 
-        if ($payment->getStatus() !== $status) {
-            $payment->setStatus($status);
-            $dispatchEvent = true;
-        }
-
         $this->paymentRepository->update($payment);
         $this->persistenceManager->persistAll();
 
-        return $dispatchEvent;
+        return $this->changePaymentStatus($payment, $status);
+    }
+
+    /**
+     * Changes the status only if no other request has changed it since the
+     * payment was loaded. cart 11 has no StatusChangeService, the status is
+     * changed with a conditional update.
+     */
+    private function changePaymentStatus(Payment $payment, string $status): bool
+    {
+        $fromStatus = $payment->getStatus();
+        if ($fromStatus === $status) {
+            return false;
+        }
+
+        $affectedRows = $this->connectionPool
+            ->getConnectionForTable(self::PAYMENT_TABLE)
+            ->update(
+                self::PAYMENT_TABLE,
+                [
+                    'status' => $status,
+                    'tstamp' => time(),
+                ],
+                [
+                    'uid' => (int)$payment->getUid(),
+                    'status' => $fromStatus,
+                ],
+                [
+                    'tstamp' => Connection::PARAM_INT,
+                    'uid' => Connection::PARAM_INT,
+                ]
+            );
+
+        if ($affectedRows === 0) {
+            $storedStatus = $this->getStoredPaymentStatus($payment);
+            if ($storedStatus !== $status) {
+                $this->logger->error('The status of a payment paid with Girosolution could not be changed.', [
+                    'payment' => $payment->getUid(),
+                    'toStatus' => $status,
+                    'storedStatus' => $storedStatus,
+                ]);
+            }
+
+            return false;
+        }
+
+        $payment->setStatus($status);
+
+        return true;
+    }
+
+    private function getStoredPaymentStatus(Payment $payment): string
+    {
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable(self::PAYMENT_TABLE);
+        $queryBuilder->getRestrictions()->removeAll();
+
+        return (string)$queryBuilder
+            ->select('status')
+            ->from(self::PAYMENT_TABLE)
+            ->where(
+                $queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter((int)$payment->getUid(), Connection::PARAM_INT))
+            )
+            ->executeQuery()
+            ->fetchOne();
     }
 
     private function addFlashMessageToCartCart(string $translationKey): void

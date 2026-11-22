@@ -15,6 +15,7 @@ use Extcode\Cart\Domain\Model\Cart\Cart;
 use Extcode\CartGirosolution\Controller\Order\PaymentController;
 use Extcode\CartGirosolution\Event\Order\CancelEvent;
 use Extcode\CartGirosolution\Event\Order\FinishEvent;
+use Extcode\GirosolutionTest\EventListener\ConcurrentPaymentStatusChange;
 use Extcode\GirosolutionTest\EventListener\EventRecorder;
 use girosolution\GiroCheckout_SDK\helper\GiroCheckout_SDK_Exception_helper;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -78,6 +79,23 @@ final class PaymentControllerRedirectActionTest extends AbstractPaymentControlle
 
         self::assertSame('paid', $this->getPayment()['status']);
         self::assertCount(1, EventRecorder::getEvents()[FinishEvent::class] ?? []);
+    }
+
+    /**
+     * The notification is handled while the customer is redirected back. If
+     * the notification has marked the payment as paid in the meantime, only
+     * the notification may dispatch the event, otherwise the order emails are
+     * sent twice.
+     */
+    #[Test]
+    public function redirectDoesNotDispatchTheEventIfAConcurrentRequestHasMarkedThePaymentAsPaid(): void
+    {
+        ConcurrentPaymentStatusChange::changeStatusTo('paid');
+
+        $this->sendRedirect(self::RESULT_PAYMENT_SUCCESSFUL, self::TYPOSCRIPT_SECRET);
+
+        self::assertSame('paid', $this->getPayment()['status']);
+        self::assertSame([], array_map(count(...), EventRecorder::getEvents()));
     }
 
     #[Test]
