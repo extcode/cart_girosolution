@@ -192,6 +192,25 @@ final class PaymentControllerNotifyActionTest extends AbstractPaymentControllerT
     }
 
     #[Test]
+    public function notificationForUnknownTransactionIsRejected(): void
+    {
+        $this->get(ConnectionPool::class)
+            ->getConnectionForTable('tx_cart_domain_model_order_transaction')
+            ->update('tx_cart_domain_model_order_transaction', ['txn_id' => 'gc-reference-0002'], ['uid' => 1]);
+
+        try {
+            $this->sendNotification(self::RESULT_PAYMENT_SUCCESSFUL, self::TYPOSCRIPT_SECRET);
+            self::fail('The notification for an unknown transaction has been accepted.');
+        } catch (\Exception $exception) {
+            self::assertSame(1731616906, $exception->getCode());
+        }
+
+        self::assertSame('open', $this->getPayment()['status']);
+        self::assertSame('created', $this->getTransaction()['status']);
+        self::assertSame([], EventRecorder::getEvents());
+    }
+
+    #[Test]
     public function notifyActionRespondsWithEmptyBody(): void
     {
         $response = $this->sendNotification(self::RESULT_PAYMENT_SUCCESSFUL, self::TYPOSCRIPT_SECRET);
