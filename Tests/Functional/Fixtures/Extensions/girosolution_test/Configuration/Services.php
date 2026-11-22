@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use Extcode\CartGirosolution\Event\Order\CancelEvent;
 use Extcode\CartGirosolution\Event\Order\FinishEvent;
+use Extcode\GirosolutionTest\EventListener\ConcurrentPaymentStatusChange;
 use Extcode\GirosolutionTest\EventListener\EventRecorder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use TYPO3\CMS\Extbase\Event\Persistence\AfterObjectThawedEvent;
 
 return static function (ContainerConfigurator $containerConfigurator): void {
     $services = $containerConfigurator->services();
@@ -24,5 +26,11 @@ return static function (ContainerConfigurator $containerConfigurator): void {
         ->tag('event.listener', [
             'identifier' => 'girosolution-test--order--cancel--event-recorder',
             'event' => CancelEvent::class,
+        ]);
+
+    $services->set(ConcurrentPaymentStatusChange::class)
+        ->tag('event.listener', [
+            'identifier' => 'girosolution-test--persistence--concurrent-payment-status-change',
+            'event' => AfterObjectThawedEvent::class,
         ]);
 };

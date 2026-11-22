@@ -13,6 +13,7 @@ namespace Extcode\CartGirosolution\Tests\Functional\Controller\Order;
 
 use Codappix\Typo3PhpDatasets\TestingFramework;
 use Extcode\Cart\Domain\Model\Cart\Cart;
+use Extcode\GirosolutionTest\EventListener\ConcurrentPaymentStatusChange;
 use Extcode\GirosolutionTest\EventListener\EventRecorder;
 use Psr\Http\Message\ResponseInterface;
 use TYPO3\CMS\Core\Database\ConnectionPool;
@@ -80,6 +81,7 @@ abstract class AbstractPaymentControllerTestCase extends FunctionalTestCase
             ]);
 
         EventRecorder::reset();
+        ConcurrentPaymentStatusChange::changeStatusTo(null);
     }
 
     /**
