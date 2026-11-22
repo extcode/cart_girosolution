@@ -53,6 +53,11 @@ abstract class AbstractPaymentControllerTestCase extends FunctionalTestCase
                 'enforceValidation' => false,
             ],
         ],
+        'SYS' => [
+            'features' => [
+                'cart.useNewOrderMailSender' => true,
+            ],
+        ],
         'MAIL' => [
             'transport' => 'null',
         ],
