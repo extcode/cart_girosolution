@@ -13,6 +13,7 @@ namespace Extcode\CartGirosolution\Tests\Functional\Controller\Order;
 
 use Codappix\Typo3PhpDatasets\TestingFramework;
 use Extcode\Cart\Domain\Model\Cart\Cart;
+use Extcode\GirosolutionTest\EventListener\ConcurrentPaymentStatusChange;
 use Extcode\GirosolutionTest\EventListener\EventRecorder;
 use Psr\Http\Message\ResponseInterface;
 use TYPO3\CMS\Core\Database\ConnectionPool;
@@ -85,6 +86,7 @@ abstract class AbstractPaymentControllerTestCase extends FunctionalTestCase
             ]);
 
         EventRecorder::reset();
+        ConcurrentPaymentStatusChange::changeStatusTo(null);
     }
 
     /**
@@ -163,6 +165,21 @@ abstract class AbstractPaymentControllerTestCase extends FunctionalTestCase
     protected function getTransaction(): array
     {
         return $this->getRecord('tx_cart_domain_model_order_transaction', ['status', 'external_status_code', 'note']);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    protected function getOrderChanges(): array
+    {
+        return $this->get(ConnectionPool::class)
+            ->getConnectionForTable('tx_cart_domain_model_order_change')
+            ->select(
+                ['type', 'old_value', 'new_value', 'source', 'initiator'],
+                'tx_cart_domain_model_order_change',
+                ['item' => 1]
+            )
+            ->fetchAllAssociative();
     }
 
     private function getRecord(string $table, array $fields): array

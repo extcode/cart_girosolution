@@ -17,7 +17,10 @@ use Extcode\Cart\Domain\Model\Order\Item;
 use Extcode\Cart\Domain\Repository\CartRepository;
 use Extcode\Cart\Domain\Repository\Order\ItemRepository as OrderItemRepository;
 use Extcode\Cart\Domain\Repository\Order\PaymentRepository;
+use Extcode\Cart\OrderHistory\OrderChangeSource;
 use Extcode\Cart\OrderStatus\PaymentStatus;
+use Extcode\Cart\OrderStatus\StatusChangeOutcome;
+use Extcode\Cart\OrderStatus\StatusChangeService;
 use Extcode\Cart\Service\SessionHandler;
 use Extcode\CartGirosolution\Configuration\CredentialLoaderRegistry;
 use Extcode\CartGirosolution\Event\Order\CancelEvent;
@@ -25,6 +28,7 @@ use Extcode\CartGirosolution\Event\Order\FinishEvent;
 use girosolution\GiroCheckout_SDK\GiroCheckout_SDK_Notify;
 use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
 use TYPO3\CMS\Core\Messaging\FlashMessageService;
 use TYPO3\CMS\Core\Type\ContextualFeedbackSeverity;
@@ -36,6 +40,8 @@ use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
 class PaymentController extends ActionController
 {
+    private const INITIATOR = 'cart_girosolution';
+
     protected ?Cart $cart = null;
 
     protected array $cartPluginSettings;
@@ -51,6 +57,8 @@ class PaymentController extends ActionController
         private readonly OrderItemRepository $orderItemRepository,
         private readonly PaymentRepository $paymentRepository,
         public readonly CredentialLoaderRegistry $credentialLoaderRegistry,
+        private readonly StatusChangeService $statusChangeService,
+        private readonly LoggerInterface $logger,
     ) {}
 
     protected function initializeAction(): void
@@ -81,7 +89,7 @@ class PaymentController extends ActionController
         $notify = $this->getParsedNotify($clearingType);
 
         if ($notify->paymentSuccessful()) {
-            $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, PaymentStatus::PAID);
+            $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, PaymentStatus::PAID, OrderChangeSource::Frontend);
 
             if ($dispatchEvent) {
                 $finishEvent = new FinishEvent($this->cart->getCart(), $orderItem, $this->cartPluginSettings);
@@ -98,7 +106,7 @@ class PaymentController extends ActionController
             );
         }
 
-        $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, PaymentStatus::CANCELED);
+        $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, PaymentStatus::CANCELED, OrderChangeSource::Frontend);
 
         $this->restoreCartSession();
 
@@ -128,7 +136,7 @@ class PaymentController extends ActionController
         $notify = $this->getParsedNotify($clearingType);
 
         if ($notify->paymentSuccessful()) {
-            $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, PaymentStatus::PAID);
+            $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, PaymentStatus::PAID, OrderChangeSource::Api);
 
             if ($dispatchEvent) {
                 $orderItem = $this->cart->getOrderItem();
@@ -136,7 +144,7 @@ class PaymentController extends ActionController
                 $this->eventDispatcher->dispatch($finishEvent);
             }
         } else {
-            $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, PaymentStatus::CANCELED);
+            $dispatchEvent = $this->updatePaymentAndTransaction($notify, $orderItem, PaymentStatus::CANCELED, OrderChangeSource::Api);
 
             if ($dispatchEvent) {
                 $orderItem = $this->cart->getOrderItem();
@@ -149,10 +157,18 @@ class PaymentController extends ActionController
         return $this->htmlResponse('');
     }
 
-    private function updatePaymentAndTransaction($notify, Item $orderItem, string $status): bool
-    {
-        $dispatchEvent = false;
-
+    /**
+     * Returns true if this request has changed the status of the payment.
+     * Only this request may dispatch the events, otherwise the redirect of the
+     * customer and the notification, which arrive at about the same time,
+     * both send the emails of the order.
+     */
+    private function updatePaymentAndTransaction(
+        GiroCheckout_SDK_Notify $notify,
+        Item $orderItem,
+        string $status,
+        OrderChangeSource $source
+    ): bool {
         $payment = $orderItem->getPayment();
 
         $transaction = null;
@@ -173,15 +189,29 @@ class PaymentController extends ActionController
             $transaction->setStatus($status);
         }
 
-        if ($payment->getStatus() !== $status) {
-            $payment->setStatus($status);
-            $dispatchEvent = true;
-        }
-
         $this->paymentRepository->update($payment);
         $this->persistenceManager->persistAll();
 
-        return $dispatchEvent;
+        // changes the status only if no other request has changed it since the payment was loaded
+        $result = $this->statusChangeService->change(
+            $payment,
+            $status,
+            $payment->getStatus(),
+            self::INITIATOR,
+            null,
+            $source
+        );
+
+        if (!$result->isChanged() && $result->outcome !== StatusChangeOutcome::Unchanged) {
+            $this->logger->error('The status of a payment paid with Girosolution could not be changed.', [
+                'payment' => $payment->getUid(),
+                'toStatus' => $status,
+                'outcome' => $result->outcome->name,
+                'vetoReason' => $result->vetoReason,
+            ]);
+        }
+
+        return $result->isChanged();
     }
 
     private function addFlashMessageToCartCart(string $translationKey): void
